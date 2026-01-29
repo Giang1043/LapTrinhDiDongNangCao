@@ -28,6 +28,7 @@ function RootLayoutNav() {
           // Authenticated screens
           <>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="profile" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </>
         ) : (
