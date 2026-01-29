@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
@@ -9,13 +9,11 @@ export default function IntroScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    // Chờ 10 giây sau đó chuyển sang trang Home
+    // Chờ 5 giây sau đó chuyển sang login
     const timer = setTimeout(() => {
-      // Dùng 'replace' để người dùng không thể back lại trang intro
       router.replace('/(tabs)');
-    }, 10000);
+    }, 5000);
 
-    // Dọn dẹp timer nếu người dùng thoát app giữa chừng
     return () => clearTimeout(timer);
   }, [router]);
 
@@ -37,10 +35,27 @@ export default function IntroScreen() {
         </ThemedText>
       </View>
 
-      {/* Loading indicator để người dùng biết app đang chạy */}
+      {/* Loading indicator */}
       <View style={styles.footer}>
         <ActivityIndicator size="large" color="#0a7ea4" />
-        <ThemedText style={styles.loadingText}>Đang vào bếp chuẩn bị món...</ThemedText>
+        <ThemedText style={styles.loadingText}>Đang chuẩn bị...</ThemedText>
+        
+        {/* Quick navigation buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.button}
+            onPress={() => router.push('/(tabs)')}
+          >
+            <ThemedText style={styles.buttonText}>Đăng Nhập</ThemedText>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.button, styles.secondaryButton]}
+            onPress={() => router.push('/(tabs)')}
+          >
+            <ThemedText style={styles.secondaryButtonText}>Đăng Ký</ThemedText>
+          </TouchableOpacity>
+        </View>
       </View>
     </ThemedView>
   );
@@ -76,9 +91,38 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     gap: 10,
+    paddingHorizontal: 20,
   },
   loadingText: {
-    fontSize: 12,
-    color: '#808080',
-  }
+    fontSize: 16,
+    marginTop: 10,
+  },
+  buttonContainer: {
+    width: '100%',
+    gap: 10,
+    marginTop: 20,
+  },
+  button: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF6B35',
+  },
 });

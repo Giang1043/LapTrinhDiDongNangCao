@@ -1,219 +1,417 @@
-import { Image } from 'expo-image';
-import { StyleSheet, TouchableOpacity, View, Switch, Alert } from 'react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { Avatar, Button, Card, Text, TextInput, ActivityIndicator, Divider } from 'react-native-paper';
+import { useAuth } from '@/context/AuthContext';
+import * as realmService from '@/services/realmService';
+import * as api from '@/services/api';
+import { useRouter } from 'expo-router';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+export default function AccountScreen() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [userData, setUserData] = useState<any>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-export default function TabThreeScreen() {
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
-  const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
+  // Form fields
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
 
-  // Hàm xử lý đăng xuất giả lập
-  const handleLogout = () => {
-    Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất không?', [
+  useEffect(() => {
+    loadUserData();
+  }, [user?.id]);
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      if (user?.id) {
+        const realmUser = await realmService.getUser(user.id);
+        if (realmUser) {
+          const userData = realmUser as any;
+          setUserData(userData);
+          setFullName(userData.fullName || '');
+          setEmail(userData.email || '');
+          setPhone(userData.phoneNumber || '');
+          setAddress(userData.address || '');
+          setCity(userData.city || '');
+          setDistrict(userData.district || '');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+      Alert.alert('Lỗi', 'Không thể tải dữ liệu người dùng');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true);
+      if (!user?.id) return;
+
+      // Update Realm
+      await realmService.updateUserProfile(user.id, {
+        fullName,
+        phoneNumber: phone,
+        address,
+        city,
+        district,
+        updatedAt: new Date(),
+      });
+
+      // Update server (optional)
+      try {
+        await api.updateUserProfile(user.id, {
+          fullName,
+          phoneNumber: phone,
+          address,
+          city,
+          district,
+        });
+      } catch (error) {
+        console.warn('Server update failed, but local update succeeded', error);
+      }
+
+      setEditMode(false);
+      await loadUserData();
+      Alert.alert('Thành công', 'Hồ sơ đã được cập nhật');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Lỗi', 'Không thể cập nhật hồ sơ');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert('Xác nhận', 'Bạn chắc chắn muốn đăng xuất?', [
       { text: 'Hủy', style: 'cancel' },
-      { text: 'Đồng ý', style: 'destructive' },
+      {
+        text: 'Đăng xuất',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            if (user?.id) {
+              await realmService.deleteUserProfile(user.id);
+            }
+            await logout();
+            router.replace('/login' as any);
+          } catch (error) {
+            console.error('Error logging out:', error);
+            Alert.alert('Lỗi', 'Không thể đăng xuất');
+          }
+        },
+      },
     ]);
   };
 
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="gear" // Hoặc icon tương ứng trong thư viện của bạn
-          style={styles.headerImage}
-        />
-      }>
-      
-      {/* --- PHẦN THÔNG TIN NGƯỜI DÙNG --- */}
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Tài khoản</ThemedText>
-      </ThemedView>
+    <ScrollView style={styles.container}>
+      {/* Profile Header */}
+      <Card style={styles.profileCard}>
+        <Card.Content style={styles.profileHeader}>
+          <Avatar.Image
+            size={100}
+            source={{
+              uri: userData?.avatar || 'https://via.placeholder.com/100',
+            }}
+          />
+          <Text variant="headlineSmall" style={styles.name}>
+            {userData?.fullName}
+          </Text>
+          <Text variant="bodySmall" style={styles.email}>
+            {userData?.email}
+          </Text>
+          <Text variant="labelSmall" style={styles.role}>
+            {userData?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+          </Text>
+        </Card.Content>
+      </Card>
 
-      <ThemedView style={styles.profileSection}>
-        <Image
-          style={styles.avatar}
-          source="https://github.com/shadcn.png" // Thay bằng URL avatar thực tế
-          contentFit="cover"
-          transition={1000}
-        />
-        <View style={styles.profileInfo}>
-          <ThemedText type="subtitle">Cao Cự Giang</ThemedText>
-          <ThemedText style={{ color: '#808080' }}>GiangHocDiDong@example.com</ThemedText>
-          <TouchableOpacity style={styles.editButton}>
-            <ThemedText type="defaultSemiBold" style={styles.editButtonText}>Chỉnh sửa hồ sơ</ThemedText>
-          </TouchableOpacity>
-        </View>
-      </ThemedView>
-
-      <View style={styles.separator} />
-
-      {/* --- NHÓM 1: CÀI ĐẶT CHUNG --- */}
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Cài đặt chung</ThemedText>
-        
-        {/* Toggle Dark Mode */}
-        <View style={styles.row}>
-          <View style={styles.rowLeft}>
-            <IconSymbol name="moon.fill" size={20} color="#808080" style={styles.rowIcon} />
-            <ThemedText>Giao diện tối</ThemedText>
+      {/* Profile Completion */}
+      <Card style={styles.completionCard}>
+        <Card.Content>
+          <Text variant="titleSmall">Hoàn thành hồ sơ</Text>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${userData?.profileCompleteness || 0}%`,
+                },
+              ]}
+            />
           </View>
-          <Switch value={isDarkTheme} onValueChange={setIsDarkTheme} />
-        </View>
+          <Text variant="labelSmall">
+            {userData?.profileCompleteness || 0}% hoàn thành
+          </Text>
+        </Card.Content>
+      </Card>
 
-        {/* Toggle Thông báo */}
-        <View style={styles.row}>
-          <View style={styles.rowLeft}>
-            <IconSymbol name="bell.fill" size={20} color="#808080" style={styles.rowIcon} />
-            <ThemedText>Thông báo</ThemedText>
-          </View>
-          <Switch value={isNotificationEnabled} onValueChange={setIsNotificationEnabled} />
-        </View>
-      </ThemedView>
+      {/* Edit Profile Form */}
+      {editMode ? (
+        <Card style={styles.formCard}>
+          <Card.Title title="Chỉnh sửa hồ sơ" />
+          <Card.Content>
+            <TextInput
+              label="Họ và tên"
+              value={fullName}
+              onChangeText={setFullName}
+              mode="outlined"
+              style={styles.input}
+            />
+            <TextInput
+              label="Email"
+              value={email}
+              editable={false}
+              mode="outlined"
+              style={styles.input}
+            />
+            <TextInput
+              label="Số điện thoại"
+              value={phone}
+              onChangeText={setPhone}
+              mode="outlined"
+              style={styles.input}
+              keyboardType="phone-pad"
+            />
+            <TextInput
+              label="Địa chỉ"
+              value={address}
+              onChangeText={setAddress}
+              mode="outlined"
+              style={styles.input}
+              multiline
+            />
+            <TextInput
+              label="Tỉnh/Thành phố"
+              value={city}
+              onChangeText={setCity}
+              mode="outlined"
+              style={styles.input}
+            />
+            <TextInput
+              label="Quận/Huyện"
+              value={district}
+              onChangeText={setDistrict}
+              mode="outlined"
+              style={styles.input}
+            />
 
-      {/* --- NHÓM 2: TÀI KHOẢN & BẢO MẬT --- */}
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Bảo mật</ThemedText>
-        
-        <TouchableOpacity style={styles.row}>
-          <View style={styles.rowLeft}>
-            <IconSymbol name="lock.fill" size={20} color="#808080" style={styles.rowIcon} />
-            <ThemedText>Đổi mật khẩu</ThemedText>
-          </View>
-          <IconSymbol name="chevron.right" size={18} color="#C7C7CC" />
-        </TouchableOpacity>
+            <View style={styles.buttonGroup}>
+              <Button
+                mode="contained"
+                onPress={handleSaveProfile}
+                loading={saving}
+                disabled={saving}
+                style={styles.saveBtn}
+              >
+                Lưu
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => setEditMode(false)}
+                disabled={saving}
+                style={styles.cancelBtn}
+              >
+                Hủy
+              </Button>
+            </View>
+          </Card.Content>
+        </Card>
+      ) : (
+        <Card style={styles.infoCard}>
+          <Card.Title title="Thông tin cá nhân" />
+          <Card.Content>
+            <View style={styles.infoRow}>
+              <Text variant="labelMedium">Họ tên:</Text>
+              <Text variant="bodyMedium">{userData?.fullName || 'Chưa cập nhật'}</Text>
+            </View>
+            <Divider style={styles.divider} />
 
-        <TouchableOpacity style={styles.row}>
-          <View style={styles.rowLeft}>
-            <IconSymbol name="shield.fill" size={20} color="#808080" style={styles.rowIcon} />
-            <ThemedText>Xác thực 2 lớp (2FA)</ThemedText>
-          </View>
-          <IconSymbol name="chevron.right" size={18} color="#C7C7CC" />
-        </TouchableOpacity>
-      </ThemedView>
+            <View style={styles.infoRow}>
+              <Text variant="labelMedium">Email:</Text>
+              <Text variant="bodyMedium">{userData?.email}</Text>
+            </View>
+            <Divider style={styles.divider} />
 
-      {/* --- NHÓM 3: HỖ TRỢ & PHÁP LÝ (Sử dụng Collapsible & ExternalLink) --- */}
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Thông tin khác</ThemedText>
-        
-        <Collapsible title="Điều khoản dịch vụ">
-          <ThemedText>
-            Bằng việc sử dụng ứng dụng, bạn đồng ý với các điều khoản... {' '}
-            <ExternalLink href="https://example.com/terms">
-              <ThemedText type="link">Xem thêm trên web</ThemedText>
-            </ExternalLink>
-          </ThemedText>
-        </Collapsible>
+            <View style={styles.infoRow}>
+              <Text variant="labelMedium">Số điện thoại:</Text>
+              <Text variant="bodyMedium">{userData?.phoneNumber || 'Chưa cập nhật'}</Text>
+            </View>
+            <Divider style={styles.divider} />
 
-        <Collapsible title="Chính sách bảo mật">
-          <ThemedText>
-            Chúng tôi cam kết bảo vệ dữ liệu cá nhân của bạn theo tiêu chuẩn quốc tế.
-          </ThemedText>
-        </Collapsible>
-      </ThemedView>
+            <View style={styles.infoRow}>
+              <Text variant="labelMedium">Địa chỉ:</Text>
+              <Text variant="bodyMedium">{userData?.address || 'Chưa cập nhật'}</Text>
+            </View>
+            <Divider style={styles.divider} />
 
-      {/* --- NÚT ĐĂNG XUẤT --- */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <ThemedText style={styles.logoutText}>Đăng xuất</ThemedText>
-      </TouchableOpacity>
-      
-      <View style={{ marginBottom: 40 }} />
-    </ParallaxScrollView>
+            <View style={styles.infoRow}>
+              <Text variant="labelMedium">Tỉnh/Thành phố:</Text>
+              <Text variant="bodyMedium">{userData?.city || 'Chưa cập nhật'}</Text>
+            </View>
+            <Divider style={styles.divider} />
+
+            <View style={styles.infoRow}>
+              <Text variant="labelMedium">Quận/Huyện:</Text>
+              <Text variant="bodyMedium">{userData?.district || 'Chưa cập nhật'}</Text>
+            </View>
+
+            <Button
+              mode="contained"
+              onPress={() => setEditMode(true)}
+              style={styles.editBtn}
+            >
+              Chỉnh sửa
+            </Button>
+          </Card.Content>
+        </Card>
+      )}
+
+      {/* Account Actions */}
+      <Card style={styles.actionsCard}>
+        <Card.Title title="Hành động" />
+        <Card.Content>
+          <Button mode="outlined" style={styles.actionButton}>
+            Thay đổi mật khẩu
+          </Button>
+          <Button
+            mode="contained-tonal"
+            style={styles.actionButton}
+            onPress={() => Alert.alert('Chưa hỗ trợ', 'Tính năng này sẽ được triển khai sớm')}
+          >
+            Quản lý địa chỉ
+          </Button>
+          <Button
+            mode="contained-tonal"
+            style={styles.actionButton}
+            onPress={() => Alert.alert('Chưa hỗ trợ', 'Tính năng này sẽ được triển khai sớm')}
+          >
+            Chính sách quyền riêng tư
+          </Button>
+          <Button
+            mode="contained-tonal"
+            style={styles.actionButton}
+            onPress={() => Alert.alert('Chưa hỗ trợ', 'Tính năng này sẽ được triển khai sớm')}
+          >
+            Điều khoản dịch vụ
+          </Button>
+        </Card.Content>
+      </Card>
+
+      {/* Logout Button */}
+      <Button
+        mode="contained"
+        buttonColor="#FF6B6B"
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
+        Đăng xuất
+      </Button>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 12,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  // Style cho phần Profile
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 16,
-    backgroundColor: '#e1e1e1',
-  },
-  profileInfo: {
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  editButton: {
+  profileCard: {
+    marginBottom: 16,
     marginTop: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#007AFF',
-    borderRadius: 16,
-    alignSelf: 'flex-start',
   },
-  editButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  profileHeader: {
+    alignItems: 'center',
+    paddingVertical: 16,
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#38383A', // Màu divider tối nhẹ
-    opacity: 0.2,
-    marginBottom: 24,
+  name: {
+    marginTop: 12,
+    fontWeight: '600',
   },
-  // Style cho các Section
-  sectionContainer: {
-    marginBottom: 24,
+  email: {
+    marginTop: 4,
+    color: '#666',
+  },
+  role: {
+    marginTop: 4,
+    color: '#999',
+  },
+  completionCard: {
+    marginBottom: 16,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#eee',
+    borderRadius: 4,
+    marginVertical: 8,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF6B6B',
+  },
+  formCard: {
+    marginBottom: 16,
+  },
+  input: {
+    marginBottom: 12,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
     gap: 8,
+    marginTop: 16,
   },
-  sectionTitle: {
-    marginBottom: 8,
-    fontSize: 18,
+  saveBtn: {
+    flex: 1,
   },
-  row: {
+  cancelBtn: {
+    flex: 1,
+  },
+  infoCard: {
+    marginBottom: 16,
+  },
+  infoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#38383A',
-  },
-  rowLeft: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    paddingVertical: 8,
   },
-  rowIcon: {
-    width: 24, 
-    textAlign: 'center', // Căn giữa icon nếu kích thước khác nhau
+  divider: {
+    marginVertical: 0,
   },
-  // Nút đăng xuất
+  editBtn: {
+    marginTop: 16,
+  },
+  actionsCard: {
+    marginBottom: 16,
+  },
+  actionButton: {
+    marginBottom: 8,
+  },
   logoutButton: {
-    marginTop: 10,
-    padding: 16,
-    backgroundColor: '#FF3B30', // Màu đỏ cảnh báo
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 16,
+    marginHorizontal: 0,
+    marginBottom: 20,
   },
 });
