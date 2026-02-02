@@ -4,6 +4,7 @@ import { Avatar, Button, Card, Text, Chip, ActivityIndicator } from 'react-nativ
 import { useAuth } from '@/context/AuthContext';
 import * as realmService from '@/services/realmService';
 import * as api from '@/services/api';
+import SearchFilter, { SearchFilterState } from '@/components/SearchFilter';
 import { useRouter } from 'expo-router';
 
 interface Product {
@@ -27,10 +28,13 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
   const [userData, setUserData] = useState<any>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState<SearchFilterState | null>(null);
 
   // Load user from Realm on mount
   useEffect(() => {
@@ -59,6 +63,11 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       await Promise.all([loadProducts(), loadCategories()]);
+      // Khởi tạo filteredProducts = products khi tải xong
+      const response = await api.getProductList(1, 20);
+      if (response && response.data) {
+        setFilteredProducts(response.data);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -97,6 +106,48 @@ export default function HomeScreen() {
     }
   };
 
+  const handleSearch = async (filters: SearchFilterState) => {
+    try {
+      setSearchActive(true);
+      setCurrentFilters(filters);
+      setLoading(true);
+
+      // Xử lý tìm kiếm nâng cao
+      if (filters.query || filters.category || filters.rating) {
+        const response = await api.searchProductsAdvanced(filters.query, {
+          priceMin: filters.priceRange[0],
+          priceMax: filters.priceRange[1],
+          rating: filters.rating || undefined,
+          category: filters.category || undefined,
+          sortBy: filters.sortBy,
+        });
+
+        if (response && response.data) {
+          setFilteredProducts(response.data);
+        }
+      } else {
+        // Nếu không có điều kiện tìm kiếm, hiển thị tất cả sản phẩm được lọc
+        setFilteredProducts(getFilteredProducts());
+      }
+    } catch (error) {
+      console.error('Error searching products:', error);
+      setFilteredProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetFilters = async () => {
+    try {
+      setSearchActive(false);
+      setCurrentFilters(null);
+      setSelectedCategory('all');
+      setFilteredProducts(products);
+    } catch (error) {
+      console.error('Error resetting filters:', error);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       if (user?.id) {
@@ -110,10 +161,52 @@ export default function HomeScreen() {
   };
 
   const getFilteredProducts = () => {
-    if (selectedCategory === 'all') {
-      return products;
+    let result = products;
+
+    // Lọc theo danh mục
+    if (selectedCategory !== 'all') {
+      result = result.filter((p) => p.category === selectedCategory);
     }
-    return products.filter((p) => p.category === selectedCategory);
+
+    // Lọc theo khoảng giá (nếu có bộ lọc)
+    if (currentFilters) {
+      result = result.filter(
+        (p) =>
+          p.price >= currentFilters.priceRange[0] &&
+          p.price <= currentFilters.priceRange[1]
+      );
+
+      // Lọc theo đánh giá
+      if (currentFilters.rating) {
+        result = result.filter((p) => p.rating >= currentFilters.rating!);
+      }
+
+      // Sắp xếp
+      result = sortProducts(result, currentFilters.sortBy);
+    }
+
+    return result;
+  };
+
+  const sortProducts = (
+    items: Product[],
+    sortBy: SearchFilterState['sortBy']
+  ): Product[] => {
+    const sorted = [...items];
+    
+    switch (sortBy) {
+      case 'price-low':
+        return sorted.sort((a, b) => a.price - b.price);
+      case 'price-high':
+        return sorted.sort((a, b) => b.price - a.price);
+      case 'rating':
+        return sorted.sort((a, b) => b.rating - a.rating);
+      case 'newest':
+        return sorted.reverse(); // Giả sử thứ tự API là mới nhất trước
+      case 'relevance':
+      default:
+        return sorted;
+    }
   };
 
   if (loading) {
@@ -130,6 +223,13 @@ export default function HomeScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
+      {/* Search Filter Component */}
+      <SearchFilter
+        onSearch={handleSearch}
+        onReset={handleResetFilters}
+        categories={categories}
+      />
+
       {/* User Header Section */}
       <Card style={styles.userCard}>
         <Card.Content>

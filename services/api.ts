@@ -141,4 +141,68 @@ export const searchProducts = async (query: string) => {
   }
 };
 
+export const searchProductsAdvanced = async (
+  query: string = '',
+  filters: {
+    page?: number;
+    limit?: number;
+    priceMin?: number;
+    priceMax?: number;
+    rating?: number;
+    category?: string;
+    sortBy?: 'relevance' | 'price-low' | 'price-high' | 'rating' | 'newest';
+  } = {}
+) => {
+  try {
+    const params = {
+      q: query,
+      page: filters.page || 1,
+      limit: filters.limit || 20,
+      priceMin: filters.priceMin || 0,
+      priceMax: filters.priceMax || 1000000,
+      ...(filters.rating && { rating: filters.rating }),
+      ...(filters.category && { category: filters.category }),
+      ...(filters.sortBy && { sortBy: filters.sortBy }),
+    };
+
+    const response = await apiClient.get('/products/search/advanced', {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching products (advanced):', error);
+    throw error;
+  }
+};
+
+export const filterProducts = async (filters: {
+  page?: number;
+  limit?: number;
+  categoryId?: string;
+  priceMin?: number;
+  priceMax?: number;
+  rating?: number;
+  sortBy?: 'price-low' | 'price-high' | 'rating' | 'newest';
+} = {}) => {
+  try {
+    const params = {
+      page: filters.page || 1,
+      limit: filters.limit || 20,
+      ...(filters.categoryId && { categoryId: filters.categoryId }),
+      ...(filters.priceMin && { priceMin: filters.priceMin }),
+      ...(filters.priceMax && { priceMax: filters.priceMax }),
+      ...(filters.rating && { rating: filters.rating }),
+      ...(filters.sortBy && { sortBy: filters.sortBy }),
+    };
+
+    const response = await apiClient.get('/products/filter', {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error filtering products:', error);
+    throw error;
+  }
+};
+
 export default apiClient;
