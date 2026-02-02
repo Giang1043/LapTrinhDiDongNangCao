@@ -30,6 +30,13 @@ function RootLayoutNav() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen 
+              name="product-detail" 
+              options={{ 
+                headerShown: false,
+                presentation: 'card',
+              }} 
+            />
           </>
         ) : (
           // Auth screens

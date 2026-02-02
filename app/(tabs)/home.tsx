@@ -15,6 +15,8 @@ interface Product {
   image: string;
   rating: number;
   category: string;
+  discount?: number;
+  reviewCount?: number;
 }
 
 interface Category {
@@ -158,6 +160,13 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const handleProductPress = (productId: string) => {
+    router.push({
+      pathname: '/product-detail',
+      params: { productId },
+    } as any);
   };
 
   const getFilteredProducts = () => {
@@ -321,7 +330,7 @@ export default function HomeScreen() {
           Sản phẩm nổi bật
         </Text>
         {getFilteredProducts().map((product) => (
-          <Card key={product.id} style={styles.productCard}>
+          <Card key={product.id} style={styles.productCard} onPress={() => handleProductPress(product.id)}>
             <Card.Cover source={{ uri: product.image }} />
             <Card.Content style={styles.productContent}>
               <Text variant="titleMedium" numberOfLines={1}>
@@ -341,8 +350,12 @@ export default function HomeScreen() {
                   </Text>
                   <Text variant="labelSmall">⭐ {product.rating}</Text>
                 </View>
-                <Button mode="contained" compact>
-                  Thêm vào giỏ
+                <Button 
+                  mode="contained" 
+                  compact
+                  onPress={() => handleProductPress(product.id)}
+                >
+                  Chi tiết
                 </Button>
               </View>
             </Card.Content>

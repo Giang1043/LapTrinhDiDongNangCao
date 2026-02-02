@@ -73,6 +73,45 @@ export const getProductById = async (productId: string) => {
   }
 };
 
+export const getProductDetails = async (productId: string) => {
+  try {
+    const response = await apiClient.get(`/products/${productId}/details`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching product details:', error);
+    // Fallback to regular getProductById
+    return getProductById(productId);
+  }
+};
+
+export const getRelatedProducts = async (productId: string, limit: number = 5) => {
+  try {
+    const response = await apiClient.get(`/products/${productId}/related`, {
+      params: { limit },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching related products:', error);
+    throw error;
+  }
+};
+
+export const getProductReviews = async (
+  productId: string,
+  page: number = 1,
+  limit: number = 10
+) => {
+  try {
+    const response = await apiClient.get(`/products/${productId}/reviews`, {
+      params: { page, limit },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    throw error;
+  }
+};
+
 export const getCategoryList = async () => {
   try {
     const response = await apiClient.get('/categories');
