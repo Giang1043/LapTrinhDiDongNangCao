@@ -103,6 +103,7 @@ export default function HomeScreen() {
       <ThemedView style={styles.footer}>
         <ThemedText style={styles.footerText}>
           © 2026 - Tất cả quyền được bảo lưu bởi Giang Cao
+          Tạo cái footerText để nhìn thử. 
         </ThemedText>
       </ThemedView>
     </ScrollView>

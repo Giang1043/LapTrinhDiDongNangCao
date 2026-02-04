@@ -19,6 +19,7 @@ export default function IntroScreen() {
         style={styles.logo}
       />
       <Text style={styles.welcomeText}>Welcome to my app!</Text>
+      <Text style={styles.authorText}>App created by Giang</Text>
     </View>
   );
 
@@ -41,5 +42,10 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginTop: 20,
-  }
+  },
+  authorText: {
+    fontSize: 16,
+    marginTop: 10,
+    color: '#888',
+  },
 });
