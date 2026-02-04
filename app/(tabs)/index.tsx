@@ -1,98 +1,207 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* Header Section */}
+      <ThemedView style={styles.headerSection}>
+        <View style={styles.avatarContainer}>
+          <Image
+            source={require('@/assets/images/icon.png')}
+            style={styles.avatar}
+          />
+        </View>
+        <View style={styles.greetingContainer}>
+          <ThemedText type="title" style={styles.greeting}>
+            Xin chào!
+          </ThemedText>
+          <HelloWave />
+        </View>
+      </ThemedView>
+
+      {/* About Section */}
+      <ThemedView style={[styles.section, { backgroundColor: isDark ? '#1D3D47' : '#A1CEDC' }]}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Về Tôi
+        </ThemedText>
+        <ThemedText style={styles.description}>
+          Tôi là Cao Cự Giang.  Là một lập trình viên.
         </ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+
+      {/* Skills Section */}
+      <ThemedView style={styles.section}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Kỹ Năng
+        </ThemedText>
+        <View style={styles.skillsContainer}>
+          {['React Native', 'TypeScript', 'Expo', 'React', 'JavaScript'].map((skill, index) => (
+            <View key={index} style={[styles.skillBadge, { borderColor: Colors[colorScheme ?? 'light'].tint }]}>
+              <ThemedText style={styles.skillText}>{skill}</ThemedText>
+            </View>
+          ))}
+        </View>
+      </ThemedView>
+
+      {/* Contact Section */}
+      <ThemedView style={styles.section}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Liên Hệ
+        </ThemedText>
+        <View style={styles.contactContainer}>
+          <TouchableOpacity
+            style={[styles.contactButton, { borderColor: Colors[colorScheme ?? 'light'].tint }]}
+            onPress={() => Linking.openURL('mailto:tigiang2004@gmail.com')}
+          >
+            <ThemedText style={styles.contactButtonText}>📧 Email</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.contactButton, { borderColor: Colors[colorScheme ?? 'light'].tint }]}
+            onPress={() => Linking.openURL('https://github.com/Giang1043')}
+          >
+            <ThemedText style={styles.contactButtonText}>💻 GitHub</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.contactButton, { borderColor: Colors[colorScheme ?? 'light'].tint }]}
+            onPress={() => Linking.openURL('https://www.linkedin.com/in/giang-cao-a15a3b3a0/')}
+          >
+            <ThemedText style={styles.contactButtonText}>💼 LinkedIn</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+
+      {/* Experience Section */}
+      <ThemedView style={styles.section}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Kinh Nghiệm
+        </ThemedText>
+        <View style={styles.experienceItem}>
+          <ThemedText type="defaultSemiBold">Lập Trình Viên Mobile</ThemedText>
+          <ThemedText style={styles.experienceDetails}>
+            Phát triển ứng dụng di động sử dụng React Native và Expo
+          </ThemedText>
+        </View>
+        <View style={styles.experienceItem}>
+          <ThemedText type="defaultSemiBold">Lập Trình Viên Web</ThemedText>
+          <ThemedText style={styles.experienceDetails}>
+            Xây dựng các ứng dụng web với React và JavaScript
+          </ThemedText>
+        </View>
+      </ThemedView>
+
+      {/* Footer */}
+      <ThemedView style={styles.footer}>
+        <ThemedText style={styles.footerText}>
+          © 2026 - Tất cả quyền được bảo lưu bởi Giang Cao
         </ThemedText>
       </ThemedView>
-    </ParallaxScrollView>
+    </ScrollView>
   );
 }
 
+import { TouchableOpacity } from 'react-native';
+
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
+  contentContainer: {
+    paddingBottom: 40,
+  },
+  headerSection: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: '#0a7ea4',
+  },
+  greetingContainer: {
+    alignItems: 'center',
+  },
+  greeting: {
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  section: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+  },
+  description: {
+    lineHeight: 24,
+    marginBottom: 8,
+  },
+  skillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  skillBadge: {
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  skillText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  contactContainer: {
+    gap: 10,
+  },
+  contactButton: {
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  contactButtonText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  experienceItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  experienceDetails: {
+    marginTop: 4,
+    fontSize: 13,
+    opacity: 0.7,
+  },
+  footer: {
+    marginTop: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  footerText: {
+    fontSize: 12,
+    opacity: 0.6,
   },
 });
