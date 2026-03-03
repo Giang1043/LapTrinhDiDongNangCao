@@ -67,6 +67,13 @@ export default function BottomTabNavigator() {
         },
       })}
     >
+        <Tab.Screen
+        name="User"
+        component={UserStack}
+        options={{
+          tabBarLabel: 'Tài khoản',
+        }}
+      />
       <Tab.Screen
         name="Home"
         component={HomeStack}
@@ -81,13 +88,7 @@ export default function BottomTabNavigator() {
           tabBarLabel: 'Giỏ hàng',
         }}
       />
-      <Tab.Screen
-        name="User"
-        component={UserStack}
-        options={{
-          tabBarLabel: 'Tài khoản',
-        }}
-      />
+      
     </Tab.Navigator>
   );
 }

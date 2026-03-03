@@ -12,7 +12,26 @@ export default function HomeScreen() {
       <ScrollView style={styles.content}>
         <Text style={styles.heading}>Chào mừng bạn đến với FoodApp</Text>
         
-        
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Danh mục sản phẩm</Text>
+          <Text style={styles.sectionText}>
+            Dữ liệu danh mục sẽ được tải từ API
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Sản phẩm bán chạy nhất</Text>
+          <Text style={styles.sectionText}>
+            Hiển thị 10 sản phẩm bán chạy nhất theo chiều ngang
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Sản phẩm giảm giá</Text>
+          <Text style={styles.sectionText}>
+            Hiển thị 20 sản phẩm giảm giá cao nhất chia 2 cột
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
