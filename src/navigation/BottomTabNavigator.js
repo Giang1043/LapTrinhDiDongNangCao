@@ -29,16 +29,23 @@ function CartStack() {
 }
 
 // Stack cho User
-function UserStack() {
+function UserStack({ onLogout }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="UserMain" component={UserScreen} />
+      <Stack.Screen
+        name="UserMain"
+        options={{
+          params: { onLogout },
+        }}
+      >
+        {(props) => <UserScreen {...props} onLogout={onLogout} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }
 
 // Bottom Tab Navigator
-export default function BottomTabNavigator() {
+export default function BottomTabNavigator({ onLogout }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -67,13 +74,6 @@ export default function BottomTabNavigator() {
         },
       })}
     >
-        <Tab.Screen
-        name="User"
-        component={UserStack}
-        options={{
-          tabBarLabel: 'Tài khoản',
-        }}
-      />
       <Tab.Screen
         name="Home"
         component={HomeStack}
@@ -88,7 +88,14 @@ export default function BottomTabNavigator() {
           tabBarLabel: 'Giỏ hàng',
         }}
       />
-      
+      <Tab.Screen
+        name="User"
+        options={{
+          tabBarLabel: 'Tài khoản',
+        }}
+      >
+        {(props) => <UserStack {...props} onLogout={onLogout} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
