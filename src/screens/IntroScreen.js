@@ -1,17 +1,43 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, Text, View, Image } from 'react-native';
 
-export default function IntroScreen({ navigation }) {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainStack' }],
-      });
-    }, 10000);
+export default function IntroScreen({ navigation, isLoggedIn, authChecked, onIntroFinish }) {
+  const [countdown, setCountdown] = useState(10);
+  const hasNavigatedRef = useRef(false);
 
-    return () => clearTimeout(timer);
-  }, [navigation]);
+  // Effect 1: Handle navigation khi countdown = 0
+  useEffect(() => {
+    if (countdown === 0 && !hasNavigatedRef.current && authChecked) {
+      hasNavigatedRef.current = true;
+      
+      // Gỏi callback để RootNavigator update isAppStarted = true
+      if (onIntroFinish) {
+        onIntroFinish();
+      }
+      
+      // Sau khi finish Intro, thực hiện navigate
+      if (isLoggedIn) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainStack' }],
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AuthStack' }],
+        });
+      }
+    }
+  }, [countdown, authChecked, isLoggedIn]);
+
+  // Effect 2: Countdown timer
+  useEffect(() => {
+    const countdownTimer = setInterval(() => {
+      setCountdown(prev => prev > 0 ? prev - 1 : 0);
+    }, 1000);
+
+    return () => clearInterval(countdownTimer);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -22,6 +48,7 @@ export default function IntroScreen({ navigation }) {
         />
         <Text style={styles.title}>FoodApp</Text>
         <Text style={styles.subtitle}>Giao hàng nhanh, ăn ngon lành</Text>
+        <Text style={styles.countdownText}>{countdown}s</Text>
       </View>
     </View>
   );
@@ -54,5 +81,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     marginTop: 10,
+  },
+  countdownText: {
+    fontSize: 14,
+    color: '#fff',
+    marginTop: 20,
+    opacity: 0.7,
   },
 });

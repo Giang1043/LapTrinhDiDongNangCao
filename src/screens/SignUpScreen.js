@@ -9,7 +9,7 @@ import {
 import { TextInput, Button, Text, Appbar } from 'react-native-paper';
 import { registerUser } from '../services/authService';
 
-export default function SignUpScreen({ navigation, onSignUpSuccess }) {
+export default function SignUpScreen({ navigation }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -51,8 +51,11 @@ export default function SignUpScreen({ navigation, onSignUpSuccess }) {
     try {
       const result = await registerUser(email, password, name, phone);
       if (result.success) {
-        // Gọi callback để lưu user info
-        onSignUpSuccess(result.user);
+        // OTP sẽ được gửi tự động, chuyển sang OTP verification screen
+        navigation.navigate('OTPVerification', {
+          email,
+          type: 'signup',
+        });
       }
     } catch (err) {
       setError(err.message || 'Đăng ký thất bại');

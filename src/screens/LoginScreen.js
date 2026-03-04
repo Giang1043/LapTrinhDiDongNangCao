@@ -22,12 +22,15 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
 
     try {
       const result = await loginUser(email, password);
-      if (result.success) {
-        // Gọi callback để lưu user info
-        onLoginSuccess(result.user);
+      if (result.success && result.token) {
+        // Gọi callback để lưu user info và JWT token
+        onLoginSuccess({
+          user: result.user,
+          token: result.token,
+        });
       }
     } catch (err) {
-      setError(err.message || 'Đạng nhập thất bại');
+      setError(err.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             <Text style={styles.hintText}>
               📌 Tài khoản demo:
             </Text>
-            <Text style={styles.hintValue}>Email: test@example.com</Text>
+            <Text style={styles.hintValue}>Email: tigiang2004@gmail.com</Text>
             <Text style={styles.hintValue}>Mật khẩu: 123456</Text>
           </View>
 
@@ -107,7 +110,11 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           </Button>
 
           {/* Forgot password link */}
-          <TouchableOpacity style={styles.forgotPasswordContainer}>
+          <TouchableOpacity
+            style={styles.forgotPasswordContainer}
+            onPress={() => navigation.navigate('ForgotPassword')}
+            disabled={loading}
+          >
             <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
           </TouchableOpacity>
         </View>

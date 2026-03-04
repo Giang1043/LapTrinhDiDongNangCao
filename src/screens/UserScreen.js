@@ -13,9 +13,10 @@ export default function UserScreen({ onLogout }) {
 
   const loadUserInfo = async () => {
     try {
-      const userInfo = await AsyncStorage.getItem('userInfo');
-      if (userInfo) {
-        setUser(JSON.parse(userInfo));
+      const authData = await AsyncStorage.getItem('authData');
+      if (authData) {
+        const parsedData = JSON.parse(authData);
+        setUser(parsedData.user);
       }
     } catch (error) {
       console.log('Error loading user info:', error);
