@@ -7,8 +7,8 @@ import {
   Alert,
 } from 'react-native';
 import { TextInput, Button, Text, Appbar } from 'react-native-paper';
-// Đã thêm requestForgotPasswordOTP vào import
-import { verifyOTP, sendOTP, activateAccount, requestForgotPasswordOTP } from '../services/authService';
+import { verifyOTP, sendOTP, requestForgotPasswordOTP } from '../services/otpService';
+import { activateAccount } from '../services/authService';
 
 export default function OTPVerificationScreen({
   navigation,

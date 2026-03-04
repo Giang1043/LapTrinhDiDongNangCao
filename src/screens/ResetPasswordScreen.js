@@ -7,7 +7,7 @@ import {
   Text as RNText,
 } from 'react-native';
 import { TextInput, Button, Text, Appbar } from 'react-native-paper';
-import { resetPasswordWithOTP } from '../services/authService';
+import { resetPasswordWithOTP } from '../services/passwordService';
 
 export default function ResetPasswordScreen({ navigation, route }) {
   const { email, otp: initialOtp } = route?.params || {};

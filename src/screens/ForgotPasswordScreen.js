@@ -7,7 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { TextInput, Button, Text, Appbar } from 'react-native-paper';
-import { requestForgotPasswordOTP } from '../services/authService';
+import { requestForgotPasswordOTP } from '../services/otpService';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState('');
