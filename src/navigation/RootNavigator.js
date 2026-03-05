@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import IntroScreen from '../screens/IntroScreen';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
 import { useAuth } from '../hooks/useAuth';
+import { initializeRealmDatabase } from '../services/migrationService';
 
 
 const Stack = createNativeStackNavigator();
@@ -19,6 +20,28 @@ const Stack = createNativeStackNavigator();
 export default function RootNavigator() {
   const [isAppStarted, setIsAppStarted] = useState(false);
   const { isLoggedIn, authChecked, saveAuthData, logout } = useAuth();
+
+  /**
+   * Initialize Realm database on app launch (with fallback)
+   */
+  useEffect(() => {
+    const initRealm = async () => {
+      try {
+        const result = await initializeRealmDatabase();
+        if (result) {
+          console.log('✅ Database initialization complete');
+        } else {
+          console.log('⚠️ Database initialization skipped, using AsyncStorage fallback');
+        }
+      } catch (error) {
+        console.error('❌ Error initializing database:', error);
+        console.log('💾 App will continue with AsyncStorage fallback');
+        // App continues anyway - not a blocker
+      }
+    };
+
+    initRealm();
+  }, []);
 
   /**
    * Handle successful login/signup
