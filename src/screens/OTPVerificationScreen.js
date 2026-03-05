@@ -84,8 +84,8 @@ export default function OTPVerificationScreen({
               });
               
               navigation.replace('Success', {
-                message: '🎉 Xác thực và đăng nhập thành công!',
-                countdown: 5,
+                message: 'Tạo tài khoản thành công',
+                countdown: 3,
               });
             }
           } catch (activationErr) {

@@ -24,7 +24,7 @@ export default function SuccessScreen({ navigation, route }) {
         }
         return prev - 1;
       });
-    }, 1000);
+    }, 1000); // ← Thay từ 5000 thành 1000
 
     return () => clearInterval(interval);
   }, [navigation]);
