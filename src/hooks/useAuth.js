@@ -4,17 +4,20 @@
 
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import UserRepository from '../database/repositories/UserRepository';
+import { STORAGE_KEYS } from '../constants/appConstants';
 
 /**
  * useAuth - Manage authentication state and operations
  * Handles:
- * - Checking auth status on app start
- * - Saving/removing auth data
+ * - Checking auth status on app start (loads user from Realm)
+ * - Saving/removing auth data (minimal AsyncStorage, user data from Realm)
  * - Logout functionality
  */
 export function useAuth() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Check auth status on mount
   useEffect(() => {
@@ -22,19 +25,34 @@ export function useAuth() {
   }, []);
 
   /**
-   * Check if user is logged in
+   * Check if user is logged in by verifying stored user ID and fetching from Realm
    */
   const checkAuthStatus = async () => {
     try {
-      const authData = await AsyncStorage.getItem('authData');
-      if (authData) {
-        setIsLoggedIn(true);
+      const userId = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_USER_ID);
+
+      if (userId) {
+        // Fetch user from Realm by ID
+        const user = UserRepository.getUserById(parseInt(userId, 10));
+
+        if (user && user.isActive) {
+          setCurrentUser(user);
+          setIsLoggedIn(true);
+        } else {
+          // User not found or not active in Realm, clear auth
+          await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_USER_ID);
+          await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+          setIsLoggedIn(false);
+          setCurrentUser(null);
+        }
       } else {
         setIsLoggedIn(false);
+        setCurrentUser(null);
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
+      console.error('❌ Error checking auth status:', error);
       setIsLoggedIn(false);
+      setCurrentUser(null);
     } finally {
       setAuthChecked(true);
     }
@@ -42,13 +60,22 @@ export function useAuth() {
 
   /**
    * Save auth data when user logs in
+   * Stores user ID and token in AsyncStorage (minimal)
+   * User data is fetched from Realm
    */
   const saveAuthData = async (authData) => {
     try {
-      await AsyncStorage.setItem('authData', JSON.stringify(authData));
+      const { user, token } = authData;
+
+      // Store only user ID and token in AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_USER_ID, String(user.id));
+      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+
+      // Set current user from passed data
+      setCurrentUser(user);
       setIsLoggedIn(true);
     } catch (error) {
-      console.error('Error saving auth data:', error);
+      console.error('❌ Error saving auth data:', error);
       throw error;
     }
   };
@@ -58,18 +85,42 @@ export function useAuth() {
    */
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('authData');
+      await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_USER_ID);
+      await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       setIsLoggedIn(false);
+      setCurrentUser(null);
     } catch (error) {
-      console.error('Error logout:', error);
+      console.error('❌ Error logout:', error);
       throw error;
+    }
+  };
+
+  /**
+   * Get current user (re-fetch from Realm if needed)
+   */
+  const getCurrentUser = async () => {
+    try {
+      const userId = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_USER_ID);
+
+      if (userId) {
+        const user = UserRepository.getUserById(parseInt(userId, 10));
+        setCurrentUser(user);
+        return user;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ Error getting current user:', error);
+      return null;
     }
   };
 
   return {
     isLoggedIn,
     authChecked,
+    currentUser,
     saveAuthData,
     logout,
+    getCurrentUser,
   };
 }

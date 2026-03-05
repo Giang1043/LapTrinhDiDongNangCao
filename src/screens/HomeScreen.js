@@ -9,7 +9,9 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Text, Card, Appbar, Searchbar } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../hooks/useAuth';
+import ProductRepository from '../database/repositories/ProductRepository';
+import CategoryRepository from '../database/repositories/CategoryRepository';
 
 const COLORS = {
   primary: '#FF6B35',
@@ -22,93 +24,42 @@ const COLORS = {
 };
 
 export default function HomeScreen({ navigation }) {
-  const [user, setUser] = useState(null);
+  const { currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
 
-  // Mock data - Categories
-  const categories = [
-    { id: '1', name: '🍔 Bánh mì', icon: '🍔' },
-    { id: '2', name: '🍕 Pizza', icon: '🍕' },
-    { id: '3', name: '🍜 Mì', icon: '🍜' },
-    { id: '4', name: '🍱 Cơm', icon: '🍱' },
-    { id: '5', name: '🥗 Salad', icon: '🥗' },
-    { id: '6', name: '🍜 Phở', icon: '🍜' },
-  ];
-
-  // Mock data - Featured Products
-  const featuredProducts = [
-    { 
-      id: '1', 
-      name: 'Bánh mì thịt nướng', 
-      price: 25000, 
-      image: '🥖',
-      rating: 4.5,
-      discount: 10 
-    },
-    { 
-      id: '2', 
-      name: 'Pizza Pepperoni', 
-      price: 95000, 
-      image: '🍕',
-      rating: 4.8,
-      discount: 15 
-    },
-    { 
-      id: '3', 
-      name: 'Phở bò', 
-      price: 35000, 
-      image: '🍜',
-      rating: 4.7,
-      discount: 5 
-    },
-    { 
-      id: '4', 
-      name: 'Mì xào', 
-      price: 40000, 
-      image: '🍲',
-      rating: 4.6,
-      discount: 8 
-    },
-  ];
-
-  // Mock data - All products
-  const allProducts = [
-    ...featuredProducts,
-    { 
-      id: '5', 
-      name: 'Salad kale', 
-      price: 45000, 
-      image: '🥗',
-      rating: 4.4,
-      discount: 12 
-    },
-    { 
-      id: '6', 
-      name: 'Cơm tấm', 
-      price: 30000, 
-      image: '🍚',
-      rating: 4.5,
-      discount: 0 
-    },
-  ];
-
-  // Fetch user data on mount
+  // Load data from Realm on mount
   useEffect(() => {
-    loadUserData();
+    loadData();
   }, []);
 
-  const loadUserData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const authData = await AsyncStorage.getItem('authData');
-      if (authData) {
-        const { user: userData } = JSON.parse(authData);
-        setUser(userData);
-      }
+
+      // Load categories from Realm
+      const realmCategories = CategoryRepository.getAllCategories();
+      setCategories(realmCategories);
+
+      // Load products from Realm
+      const realmProducts = ProductRepository.getAllProducts();
+      setAllProducts(realmProducts);
+
+      // Get top rated as featured
+      const topRated = ProductRepository.getTopRatedProducts(4);
+      setFeaturedProducts(topRated);
+
+      console.log('✓ Loaded data from Realm:', {
+        categories: realmCategories.length,
+        products: realmProducts.length,
+        featured: topRated.length,
+      });
     } catch (error) {
-      console.error('Error loading user:', error);
-      Alert.alert('Lỗi', 'Không thể tải thông tin người dùng');
+      console.error('❌ Error loading data:', error);
+      Alert.alert('Lỗi', 'Không thể tải dữ liệu sản phẩm');
     } finally {
       setLoading(false);
     }
@@ -117,6 +68,11 @@ export default function HomeScreen({ navigation }) {
   const handleProductPress = (product) => {
     Alert.alert(product.name, `Giá: ${product.price.toLocaleString('vi-VN')} đ`);
   };
+
+  // Filter products by search
+  const filteredProducts = allProducts.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Category horizontal list
   const renderCategoryItem = ({ item }) => (
@@ -195,7 +151,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.greetingSection}>
           <Text style={styles.greetingEmoji}>👋</Text>
           <Text style={styles.greetingText}>
-            Xin chào, {user?.name || 'Bạn'}!
+            Xin chào, {currentUser?.name || 'Bạn'}!
           </Text>
           <Text style={styles.greetingSubtext}>
             Chúc bạn có ngày tốt lành
@@ -232,7 +188,7 @@ export default function HomeScreen({ navigation }) {
           <FlatList
             data={categories}
             renderItem={renderCategoryItem}
-            keyExtractor={item => item.id}
+            keyExtractor={item => String(item.id)}
             horizontal
             showsHorizontalScrollIndicator={false}
             scrollEnabled={true}
@@ -251,7 +207,7 @@ export default function HomeScreen({ navigation }) {
           <FlatList
             data={featuredProducts}
             renderItem={renderFeaturedProduct}
-            keyExtractor={item => item.id}
+            keyExtractor={item => String(item.id)}
             horizontal
             showsHorizontalScrollIndicator={false}
             scrollEnabled={true}
@@ -259,13 +215,15 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
-        {/* All Products Grid */}
+        {/* All Products Grid or Search Results */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tất cả sản phẩm</Text>
+          <Text style={styles.sectionTitle}>
+            {searchQuery ? 'Kết quả tìm kiếm' : 'Tất cả sản phẩm'}
+          </Text>
           <FlatList
-            data={allProducts}
+            data={searchQuery ? filteredProducts : allProducts}
             renderItem={renderProductGridItem}
-            keyExtractor={item => item.id}
+            keyExtractor={item => String(item.id)}
             numColumns={2}
             columnWrapperStyle={styles.gridRow}
             scrollEnabled={false}

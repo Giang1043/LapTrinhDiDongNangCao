@@ -5,7 +5,8 @@ import IntroScreen from '../screens/IntroScreen';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
 import { useAuth } from '../hooks/useAuth';
-import { initializeRealmDatabase } from '../services/migrationService';
+import { realmManager } from '../database/realmManager';
+import { seedDatabase } from '../database/seedData';
 
 
 const Stack = createNativeStackNavigator();
@@ -22,21 +23,23 @@ export default function RootNavigator() {
   const { isLoggedIn, authChecked, saveAuthData, logout } = useAuth();
 
   /**
-   * Initialize Realm database on app launch (with fallback)
+   * Initialize Realm database and seed initial data on app launch
    */
   useEffect(() => {
     const initRealm = async () => {
       try {
-        const result = await initializeRealmDatabase();
-        if (result) {
-          console.log('✅ Database initialization complete');
-        } else {
-          console.log('⚠️ Database initialization skipped, using AsyncStorage fallback');
-        }
+        console.log('🚀 Initializing app...');
+
+        // Initialize Realm connection
+        await realmManager.initialize();
+
+        // Seed initial data if needed
+        await seedDatabase();
+
+        console.log('✅ App initialization complete');
       } catch (error) {
-        console.error('❌ Error initializing database:', error);
-        console.log('💾 App will continue with AsyncStorage fallback');
-        // App continues anyway - not a blocker
+        console.error('❌ Error initializing app:', error);
+        throw error;
       }
     };
 

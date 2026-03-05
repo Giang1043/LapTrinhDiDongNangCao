@@ -1,29 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Appbar, Avatar } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../hooks/useAuth';
+
+const COLORS = {
+  primary: '#FF6B35',
+  error: '#d32f2f',
+  background: '#f5f5f5',
+  text: '#333',
+  textLight: '#666',
+  white: '#fff',
+};
 
 export default function UserScreen({ onLogout }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadUserInfo();
-  }, []);
-
-  const loadUserInfo = async () => {
-    try {
-      const authData = await AsyncStorage.getItem('authData');
-      if (authData) {
-        const parsedData = JSON.parse(authData);
-        setUser(parsedData.user);
-      }
-    } catch (error) {
-      console.log('Error loading user info:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
@@ -39,10 +30,10 @@ export default function UserScreen({ onLogout }) {
     ]);
   };
 
-  if (loading || !user) {
+  if (loading || !currentUser) {
     return (
       <View style={styles.container}>
-        <Appbar.Header>
+        <Appbar.Header style={styles.appbar}>
           <Appbar.Content title="Tài khoản của tôi" />
         </Appbar.Header>
         <View style={styles.loadingContainer}>
@@ -54,7 +45,7 @@ export default function UserScreen({ onLogout }) {
 
   return (
     <View style={styles.container}>
-      <Appbar.Header>
+      <Appbar.Header style={styles.appbar}>
         <Appbar.Content title="Tài khoản của tôi" />
       </Appbar.Header>
 
@@ -63,42 +54,56 @@ export default function UserScreen({ onLogout }) {
         <View style={styles.profileSection}>
           <Avatar.Text
             size={100}
-            label={user.name.charAt(0).toUpperCase()}
+            label={currentUser.name.charAt(0).toUpperCase()}
             style={styles.avatar}
           />
-          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.name}>{currentUser.name}</Text>
+          {currentUser.isActive && (
+            <Text style={styles.status}>✓ Tài khoản đã xác thực</Text>
+          )}
         </View>
 
         {/* Thông tin chi tiết */}
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Số điện thoại:</Text>
-            <Text style={styles.value}>{user.phone}</Text>
+            <Text style={styles.value}>{currentUser.phone}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.infoRow}>
             <Text style={styles.label}>Email:</Text>
-            <Text style={styles.value}>{user.email}</Text>
+            <Text style={styles.value}>{currentUser.email}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Ngày tạo tài khoản:</Text>
+            <Text style={styles.value}>
+              {new Date(currentUser.createdAt).toLocaleDateString('vi-VN')}
+            </Text>
           </View>
         </View>
 
         {/* Menu tùy chỉnh */}
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>Tài khoản</Text>
-          
+
           <TouchableOpacity style={styles.menuItem}>
             <Text style={styles.menuText}>Chỉnh sửa thông tin</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.menuItem}>
             <Text style={styles.menuText}>Đổi mật khẩu</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.menuItem}>
             <Text style={styles.menuText}>Lịch sử mua hàng</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity style={styles.menuItem}>
+            <Text style={styles.menuText}>Danh sách yêu thích</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.menuItem, styles.logoutItem]}
             onPress={handleLogout}
           >
@@ -113,7 +118,11 @@ export default function UserScreen({ onLogout }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
+  },
+  appbar: {
+    backgroundColor: COLORS.primary,
+    elevation: 4,
   },
   loadingContainer: {
     flex: 1,
@@ -133,15 +142,21 @@ const styles = StyleSheet.create({
   },
   avatar: {
     marginBottom: 12,
-    backgroundColor: '#FF6B35',
+    backgroundColor: COLORS.primary,
   },
   name: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
+  },
+  status: {
+    fontSize: 12,
+    color: '#4CAF50',
+    marginTop: 6,
+    fontWeight: '600',
   },
   infoCard: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: COLORS.background,
     borderRadius: 8,
     padding: 16,
     marginBottom: 24,
@@ -151,13 +166,13 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: '#999',
+    color: COLORS.textLight,
     marginBottom: 4,
     fontWeight: '600',
   },
   value: {
     fontSize: 16,
-    color: '#333',
+    color: COLORS.text,
   },
   divider: {
     height: 1,
@@ -170,7 +185,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FF6B35',
+    color: COLORS.primary,
     marginBottom: 12,
     paddingHorizontal: 0,
   },
@@ -182,13 +197,13 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 16,
-    color: '#333',
+    color: COLORS.text,
   },
   logoutItem: {
     borderBottomWidth: 0,
   },
   logoutText: {
-    color: '#d32f2f',
+    color: COLORS.error,
     fontWeight: '600',
   },
 });
