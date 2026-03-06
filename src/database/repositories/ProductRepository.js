@@ -122,6 +122,38 @@ export class ProductRepository {
   }
 
   /**
+   * Get best selling products
+   * @param {number} limit - Number of products to return
+   * @returns {Array} Array of product objects sorted by soldQuantity descending
+   */
+  static getBestSellingProducts(limit = 10) {
+    try {
+      const realm = realmManager.getRealm();
+      const products = realm.objects('Product').sorted('soldQuantity', true).slice(0, limit);
+      return products.map((p) => this._toObject(p));
+    } catch (error) {
+      console.error('❌ Error getting best selling products:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get top discount products
+   * @param {number} limit - Number of products to return
+   * @returns {Array} Array of product objects sorted by discount descending
+   */
+  static getTopDiscountProducts(limit = 20) {
+    try {
+      const realm = realmManager.getRealm();
+      const products = realm.objects('Product').sorted('discount', true).slice(0, limit);
+      return products.map((p) => this._toObject(p));
+    } catch (error) {
+      console.error('❌ Error getting top discount products:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get on sale products
    * @returns {Array} Array of product objects with discount > 0
    */
@@ -245,6 +277,7 @@ export class ProductRepository {
       discount: product.discount,
       rating: product.rating,
       stock: product.stock,
+      soldQuantity: product.soldQuantity,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     };

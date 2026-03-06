@@ -28,6 +28,7 @@ const defaultProducts = [
     discount: 10,
     rating: 4.5,
     stock: 50,
+    soldQuantity: 150,
   },
   {
     id: 2,
@@ -39,6 +40,7 @@ const defaultProducts = [
     discount: 5,
     rating: 4.3,
     stock: 45,
+    soldQuantity: 120,
   },
 
   // Pizza
@@ -52,6 +54,7 @@ const defaultProducts = [
     discount: 15,
     rating: 4.7,
     stock: 30,
+    soldQuantity: 180,
   },
   {
     id: 4,
@@ -63,6 +66,7 @@ const defaultProducts = [
     discount: 10,
     rating: 4.4,
     stock: 25,
+    soldQuantity: 95,
   },
 
   // Phở
@@ -76,6 +80,7 @@ const defaultProducts = [
     discount: 0,
     rating: 4.6,
     stock: 40,
+    soldQuantity: 200,
   },
   {
     id: 6,
@@ -87,6 +92,7 @@ const defaultProducts = [
     discount: 5,
     rating: 4.5,
     stock: 35,
+    soldQuantity: 170,
   },
 
   // Cơm
@@ -100,6 +106,7 @@ const defaultProducts = [
     discount: 10,
     rating: 4.4,
     stock: 60,
+    soldQuantity: 160,
   },
   {
     id: 8,
@@ -111,6 +118,7 @@ const defaultProducts = [
     discount: 8,
     rating: 4.5,
     stock: 50,
+    soldQuantity: 140,
   },
 
   // Salad
@@ -124,6 +132,7 @@ const defaultProducts = [
     discount: 5,
     rating: 4.3,
     stock: 30,
+    soldQuantity: 85,
   },
   {
     id: 10,
@@ -135,6 +144,7 @@ const defaultProducts = [
     discount: 0,
     rating: 4.2,
     stock: 25,
+    soldQuantity: 70,
   },
 
   // Burger
@@ -148,6 +158,7 @@ const defaultProducts = [
     discount: 12,
     rating: 4.6,
     stock: 40,
+    soldQuantity: 190,
   },
   {
     id: 12,
@@ -159,6 +170,7 @@ const defaultProducts = [
     discount: 10,
     rating: 4.4,
     stock: 35,
+    soldQuantity: 145,
   },
 
   // Đồ uống
@@ -172,6 +184,7 @@ const defaultProducts = [
     discount: 0,
     rating: 4.5,
     stock: 100,
+    soldQuantity: 210,
   },
   {
     id: 14,
@@ -183,6 +196,7 @@ const defaultProducts = [
     discount: 5,
     rating: 4.3,
     stock: 80,
+    soldQuantity: 130,
   },
 
   // Tráng miệng
@@ -196,6 +210,7 @@ const defaultProducts = [
     discount: 10,
     rating: 4.7,
     stock: 20,
+    soldQuantity: 165,
   },
   {
     id: 16,
@@ -207,6 +222,7 @@ const defaultProducts = [
     discount: 5,
     rating: 4.4,
     stock: 50,
+    soldQuantity: 115,
   },
 ];
 

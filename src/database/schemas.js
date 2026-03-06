@@ -43,6 +43,7 @@ export const ProductSchema = {
     discount: { type: 'int', default: 0 },
     rating: { type: 'double', default: 0 },
     stock: { type: 'int', default: 0 },
+    soldQuantity: { type: 'int', default: 0 },
     createdAt: 'date',
     updatedAt: 'date',
   },

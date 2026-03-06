@@ -28,12 +28,18 @@ export default function HomeScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
-  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [bestSellingProducts, setBestSellingProducts] = useState([]);
+  const [topDiscountProducts, setTopDiscountProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
 
   // Load data from Realm on mount
   useEffect(() => {
-    loadData();
+    // Add small delay to ensure Realm is initialized
+    const timer = setTimeout(() => {
+      loadData();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const loadData = async () => {
@@ -44,18 +50,23 @@ export default function HomeScreen({ navigation }) {
       const realmCategories = CategoryRepository.getAllCategories();
       setCategories(realmCategories);
 
-      // Load products from Realm
-      const realmProducts = ProductRepository.getAllProducts();
-      setAllProducts(realmProducts);
+      // Load all products for search functionality
+      const realmAllProducts = ProductRepository.getAllProducts();
+      setAllProducts(realmAllProducts);
 
-      // Get top rated as featured
-      const topRated = ProductRepository.getTopRatedProducts(4);
-      setFeaturedProducts(topRated);
+      // Load best selling products (top 10)
+      const bestSelling = ProductRepository.getBestSellingProducts(10);
+      setBestSellingProducts(bestSelling);
+
+      // Load top discount products (top 20)
+      const topDiscount = ProductRepository.getTopDiscountProducts(20);
+      setTopDiscountProducts(topDiscount);
 
       console.log('✓ Loaded data from Realm:', {
         categories: realmCategories.length,
-        products: realmProducts.length,
-        featured: topRated.length,
+        allProducts: realmAllProducts.length,
+        bestSelling: bestSelling.length,
+        topDiscount: topDiscount.length,
       });
     } catch (error) {
       console.error('❌ Error loading data:', error);
@@ -202,16 +213,16 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
-        {/* Featured Products Section */}
+        {/* Best Selling Products Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Sản phẩm nổi bật</Text>
+            <Text style={styles.sectionTitle}>Sản phẩm bán chạy</Text>
             <TouchableOpacity>
               <Text style={styles.viewAllLink}>Xem tất cả →</Text>
             </TouchableOpacity>
           </View>
           <FlatList
-            data={featuredProducts}
+            data={bestSellingProducts}
             renderItem={renderFeaturedProduct}
             keyExtractor={item => String(item.id)}
             horizontal
@@ -221,13 +232,13 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
-        {/* All Products Grid or Search Results */}
+        {/* Top Discount Products Grid or Search Results */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {searchQuery ? 'Kết quả tìm kiếm' : 'Tất cả sản phẩm'}
+            {searchQuery ? 'Kết quả tìm kiếm' : 'Sản phẩm theo thứ tự giảm giá dần'}
           </Text>
           <FlatList
-            data={searchQuery ? filteredProducts : allProducts}
+            data={searchQuery ? filteredProducts : topDiscountProducts}
             renderItem={renderProductGridItem}
             keyExtractor={item => String(item.id)}
             numColumns={2}
