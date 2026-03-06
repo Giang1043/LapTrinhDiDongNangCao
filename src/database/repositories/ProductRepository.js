@@ -165,6 +165,72 @@ export class ProductRepository {
   }
 
   /**
+   * Search and filter products with combined criteria
+   * @param {Object} options - {query?, categoryId?, minPrice?, maxPrice?, minRating?, sortBy?}
+   * @returns {Array} Array of product objects
+   */
+  static searchAndFilter(options = {}) {
+    try {
+      const realm = realmManager.getRealm();
+      let products = realm.objects('Product');
+
+      // Text search
+      if (options.query && options.query.trim()) {
+        const query = options.query;
+        products = products.filtered('name CONTAINS[c] $0 OR description CONTAINS[c] $0', query, query);
+      }
+
+      // Category filter
+      if (options.categoryId !== undefined && options.categoryId !== null) {
+        products = products.filtered('categoryId = $0', options.categoryId);
+      }
+
+      // Price range filter
+      if (options.minPrice !== undefined) {
+        products = products.filtered('price >= $0', options.minPrice);
+      }
+
+      if (options.maxPrice !== undefined) {
+        products = products.filtered('price <= $0', options.maxPrice);
+      }
+
+      // Rating filter
+      if (options.minRating !== undefined) {
+        products = products.filtered('rating >= $0', options.minRating);
+      }
+
+      // Sorting
+      let sortedProducts = Array.from(products);
+      if (options.sortBy) {
+        switch (options.sortBy) {
+          case 'price_low':
+            sortedProducts.sort((a, b) => a.price - b.price);
+            break;
+          case 'price_high':
+            sortedProducts.sort((a, b) => b.price - a.price);
+            break;
+          case 'rating':
+            sortedProducts.sort((a, b) => b.rating - a.rating);
+            break;
+          case 'newest':
+            sortedProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            break;
+          case 'name':
+            sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+          default:
+            break;
+        }
+      }
+
+      return sortedProducts.map((p) => this._toObject(p));
+    } catch (error) {
+      console.error('❌ Error searching and filtering products:', error);
+      return [];
+    }
+  }
+
+  /**
    * Convert Realm object to plain JavaScript object
    * @private
    */

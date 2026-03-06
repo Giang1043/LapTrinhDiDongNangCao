@@ -168,6 +168,12 @@ export default function HomeScreen({ navigation }) {
             iconColor={COLORS.primary}
             placeholderTextColor={COLORS.textLight}
           />
+          <TouchableOpacity 
+            style={styles.advancedSearchButton}
+            onPress={() => navigation?.navigate('Search')}
+          >
+            <Text style={styles.advancedSearchButtonText}>⚙️</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Promotional Banner */}
@@ -276,10 +282,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: COLORS.white,
     marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   searchbar: {
+    flex: 1,
     backgroundColor: '#f0f0f0',
     borderRadius: 24,
+  },
+  advancedSearchButton: {
+    backgroundColor: COLORS.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  advancedSearchButtonText: {
+    fontSize: 20,
   },
 
   // Banner

@@ -12,7 +12,7 @@ const COLORS = {
   white: '#fff',
 };
 
-export default function UserScreen({ onLogout }) {
+export default function UserScreen({ navigation, onLogout }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -67,7 +67,7 @@ export default function UserScreen({ onLogout }) {
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Số điện thoại:</Text>
-            <Text style={styles.value}>{currentUser.phone}</Text>
+            <Text style={styles.value}>{currentUser.phone || 'Chưa có'}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.infoRow}>
@@ -87,27 +87,47 @@ export default function UserScreen({ onLogout }) {
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>Tài khoản</Text>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Chỉnh sửa thông tin</Text>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation?.navigate('EditProfile')}
+          >
+            <Text style={styles.menuText}>✏️ Chỉnh sửa thông tin</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation?.navigate('ChangePassword')}
+          >
+            <Text style={styles.menuText}>🔐 Đổi mật khẩu</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation?.navigate('ChangeEmail')}
+          >
+            <Text style={styles.menuText}>📧 Đổi email</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation?.navigate('ChangePhone')}
+          >
+            <Text style={styles.menuText}>📱 Đổi số điện thoại</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Đổi mật khẩu</Text>
+            <Text style={styles.menuText}>📋 Lịch sử mua hàng</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Lịch sử mua hàng</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Danh sách yêu thích</Text>
+            <Text style={styles.menuText}>❤️ Danh sách yêu thích</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.menuItem, styles.logoutItem]}
             onPress={handleLogout}
           >
-            <Text style={[styles.menuText, styles.logoutText]}>Đăng xuất</Text>
+            <Text style={[styles.menuText, styles.logoutText]}>🚪 Đăng xuất</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

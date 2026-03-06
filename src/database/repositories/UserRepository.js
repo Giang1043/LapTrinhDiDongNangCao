@@ -136,6 +136,66 @@ export class UserRepository {
   }
 
   /**
+   * Update email - Specialized function with OTP protection
+   * Only callable from OTP-verified flows (like confirmEmailChange)
+   * @param {number} userId - User ID
+   * @param {string} newEmail - New email address
+   * @returns {Object|null} Updated user object or null
+   */
+  static updateEmail(userId, newEmail) {
+    try {
+      const realm = realmManager.getRealm();
+      const user = realm.objects('User').filtered('id = $0', userId)[0];
+
+      if (!user) {
+        console.warn(`User not found: ${userId}`);
+        return null;
+      }
+
+      realm.write(() => {
+        user.email = newEmail; // Tác động chính xác chỉ trường email
+        user.updatedAt = new Date();
+      });
+
+      console.log(`✓ Security: Email updated safely for user ${userId}`);
+      return this._toObject(user);
+    } catch (error) {
+      console.error('❌ Error updating email:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update phone - Specialized function with OTP protection
+   * Only callable from OTP-verified flows (like confirmPhoneChange)
+   * @param {number} userId - User ID
+   * @param {string} newPhone - New phone number
+   * @returns {Object|null} Updated user object or null
+   */
+  static updatePhone(userId, newPhone) {
+    try {
+      const realm = realmManager.getRealm();
+      const user = realm.objects('User').filtered('id = $0', userId)[0];
+
+      if (!user) {
+        console.warn(`User not found: ${userId}`);
+        return null;
+      }
+
+      realm.write(() => {
+        user.phone = newPhone; // Tác động chính xác chỉ trường phone
+        user.updatedAt = new Date();
+      });
+
+      console.log(`✓ Security: Phone updated safely for user ${userId}`);
+      return this._toObject(user);
+    } catch (error) {
+      console.error('❌ Error updating phone:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete user
    * @param {number} userId - User ID
    * @returns {boolean} Success status
@@ -189,8 +249,9 @@ export class UserRepository {
       phone: user.phone,
       passwordHash: user.passwordHash,
       isActive: user.isActive,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      // Convert Realm Date to timestamp for easier handling in React
+      createdAt: user.createdAt ? user.createdAt.getTime() : new Date().getTime(),
+      updatedAt: user.updatedAt ? user.updatedAt.getTime() : new Date().getTime(),
     };
   }
 }

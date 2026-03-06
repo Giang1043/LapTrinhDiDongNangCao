@@ -1,25 +1,21 @@
 // ============================================
-// useAuth Hook - Authentication Logic
+// Auth Context & Hook - Global State Management
 // ============================================
 
-import { useState, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserRepository from '../database/repositories/UserRepository';
 import { STORAGE_KEYS } from '../constants/appConstants';
 
-/**
- * useAuth - Manage authentication state and operations
- * Handles:
- * - Checking auth status on app start (loads user from Realm)
- * - Saving/removing auth data (minimal AsyncStorage, user data from Realm)
- * - Logout functionality
- */
-export function useAuth() {
+// 1. Tạo Context
+const AuthContext = createContext();
+
+// 2. Tạo Provider bọc toàn bộ App
+export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Check auth status on mount
   useEffect(() => {
     checkAuthStatus();
   }, []);
@@ -115,12 +111,43 @@ export function useAuth() {
     }
   };
 
-  return {
-    isLoggedIn,
-    authChecked,
-    currentUser,
-    saveAuthData,
-    logout,
-    getCurrentUser,
+  /**
+   * Update current user data (used after profile changes)
+   * Cập nhật state Global ngay lập tức - tất cả screen sẽ thấy thay đổi này
+   */
+  const updateAuthData = async (updatedUser) => {
+    try {
+      if (updatedUser) {
+        setCurrentUser(updatedUser); // Cập nhật state Global
+      }
+    } catch (error) {
+      console.error('❌ Error updating auth data:', error);
+      throw error;
+    }
   };
-}
+
+  return (
+    <AuthContext.Provider
+      value={{
+        isLoggedIn,
+        authChecked,
+        currentUser,
+        saveAuthData,
+        logout,
+        getCurrentUser,
+        updateAuthData,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// 3. Export custom hook để các file khác gọi (như cũ)
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

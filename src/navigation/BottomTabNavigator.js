@@ -5,7 +5,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
-import UserScreen from '../screens/UserScreen';
+import SearchScreen from '../screens/SearchScreen';
+import ProfileStack from './ProfileStack';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -15,6 +16,14 @@ function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
+      <Stack.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{
+          headerShown: false,
+          animationEnabled: true,
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -24,22 +33,6 @@ function CartStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="CartMain" component={CartScreen} />
-    </Stack.Navigator>
-  );
-}
-
-// Stack cho User
-function UserStack({ onLogout }) {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen
-        name="UserMain"
-        options={{
-          params: { onLogout },
-        }}
-      >
-        {(props) => <UserScreen {...props} onLogout={onLogout} />}
-      </Stack.Screen>
     </Stack.Navigator>
   );
 }
@@ -57,7 +50,7 @@ export default function BottomTabNavigator({ onLogout }) {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Cart') {
             iconName = focused ? 'shopping' : 'shopping-outline';
-          } else if (route.name === 'User') {
+          } else if (route.name === 'Profile') {
             iconName = focused ? 'account' : 'account-outline';
           }
 
@@ -89,13 +82,14 @@ export default function BottomTabNavigator({ onLogout }) {
         }}
       />
       <Tab.Screen
-        name="User"
+        name="Profile"
         options={{
           tabBarLabel: 'Tài khoản',
         }}
       >
-        {(props) => <UserStack {...props} onLogout={onLogout} />}
+        {(props) => <ProfileStack {...props} onLogout={onLogout} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
 }
+
