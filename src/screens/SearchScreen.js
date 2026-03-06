@@ -210,8 +210,12 @@ const FilterModal = ({ visible, filters, categories, onApply, onClose }) => {
   );
 };
 
-const ProductCard = ({ product }) => (
-  <TouchableOpacity style={styles.productCard}>
+const ProductCard = ({ product, onPress }) => (
+  <TouchableOpacity 
+    style={styles.productCard}
+    onPress={() => onPress?.(product)}
+    activeOpacity={0.8}
+  >
     <View style={styles.productImagePlaceholder}>
       <Text style={styles.productImageText}>{product.name[0]}</Text>
     </View>
@@ -298,6 +302,10 @@ export default function SearchScreen({ navigation }) {
     }
   };
 
+  const handleProductPress = (product) => {
+    navigation.navigate('ProductDetails', { productId: product.id });
+  };
+
   return (
     <View style={styles.container}>
       <Appbar.Header style={styles.appbar}>
@@ -350,7 +358,7 @@ export default function SearchScreen({ navigation }) {
           numColumns={2}
           columnWrapperStyle={styles.columnWrapper}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => <ProductCard product={item} />}
+          renderItem={({ item }) => <ProductCard product={item} onPress={handleProductPress} />}
           contentContainerStyle={styles.scrollContent}
         />
       )}

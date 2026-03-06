@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
 import SearchScreen from '../screens/SearchScreen';
+import ProductDetailsScreen from '../screens/ProductDetailsScreen';
 import ProfileStack from './ProfileStack';
 
 const Stack = createNativeStackNavigator();
@@ -22,6 +23,15 @@ function HomeStack() {
         options={{
           headerShown: false,
           animationEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="ProductDetails"
+        component={ProductDetailsScreen}
+        options={{
+          headerShown: false,
+          animationEnabled: true,
+          animationTypeForReplace: 'pop',
         }}
       />
     </Stack.Navigator>

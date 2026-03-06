@@ -66,7 +66,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   const handleProductPress = (product) => {
-    Alert.alert(product.name, `Giá: ${product.price.toLocaleString('vi-VN')} đ`);
+    navigation.navigate('ProductDetails', { productId: product.id });
   };
 
   // Filter products by search
