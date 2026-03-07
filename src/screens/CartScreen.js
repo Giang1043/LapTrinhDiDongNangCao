@@ -10,8 +10,7 @@ import {
 } from 'react-native';
 import { Appbar, Card, Button } from 'react-native-paper';
 import { useAuth } from '../hooks/useAuth';
-import CartRepository from '../database/repositories/CartRepository';
-import ProductRepository from '../database/repositories/ProductRepository';
+import { useCartStore } from '../store/useCartStore';
 import { useFocusEffect as useNavFocusEffect } from '@react-navigation/native';
 
 const COLORS = {
@@ -26,79 +25,35 @@ const COLORS = {
 
 export default function CartScreen({ navigation }) {
   const { currentUser } = useAuth();
-  const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [total, setTotal] = useState(0);
+  const cartItems = useCartStore((state) => state.cartItems);
+  const total = useCartStore((state) => state.total);
+  const loading = useCartStore((state) => state.loading);
+  const updateQuantity = useCartStore((state) => state.updateQuantity);
+  const removeFromCart = useCartStore((state) => state.removeFromCart);
+  const clearCart = useCartStore((state) => state.clearCart);
+  const reloadCart = useCartStore((state) => state.reloadCart);
 
   // Reload cart when screen is focused
   useNavFocusEffect(
     React.useCallback(() => {
-      if (currentUser) {
-        loadCartItems();
+      if (currentUser?.id) {
+        reloadCart(currentUser.id);
       }
-    }, [currentUser])
+    }, [currentUser, reloadCart])
   );
 
-  const loadCartItems = async () => {
+  const handleUpdateQuantity = (cartItemId, newQuantity) => {
     try {
-      setLoading(true);
-
-      if (!currentUser?.id) {
-        console.log('No user logged in');
-        return;
-      }
-
-      // Get cart items
-      const items = CartRepository.getCartItems(currentUser.id);
-
-      // Enrich with product data
-      const enrichedItems = items.map((cartItem) => {
-        const product = ProductRepository.getProductById(cartItem.productId);
-        return {
-          ...cartItem,
-          product,
-        };
-      });
-
-      setCartItems(enrichedItems);
-
-      // Calculate total
-      const cartTotal = enrichedItems.reduce((sum, item) => {
-        const price = item.product?.price || 0;
-        const discount = item.product?.discount || 0;
-        const discountedPrice = price - (price * discount) / 100;
-        return sum + discountedPrice * item.quantity;
-      }, 0);
-
-      setTotal(cartTotal);
-    } catch (error) {
-      console.error('❌ Error loading cart:', error);
-      Alert.alert('Lỗi', 'Không thể tải giỏ hàng');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateQuantity = async (cartItemId, newQuantity) => {
-    try {
-      if (newQuantity <= 0) {
-        CartRepository.removeFromCart(cartItemId);
-      } else {
-        CartRepository.updateCartItem(cartItemId, newQuantity);
-      }
-
-      // Reload cart
-      await loadCartItems();
+      updateQuantity(cartItemId, newQuantity);
     } catch (error) {
       console.error('❌ Error updating cart:', error);
       Alert.alert('Lỗi', 'Không thể cập nhật giỏ hàng');
     }
   };
 
-  const handleRemoveItem = async (cartItemId) => {
+  const handleRemoveItem = (cartItemId) => {
     try {
-      CartRepository.removeFromCart(cartItemId);
-      await loadCartItems();
+      removeFromCart(cartItemId);
       Alert.alert('Thành công', 'Đã xóa sản phẩm khỏi giỏ hàng');
     } catch (error) {
       console.error('❌ Error removing item:', error);
@@ -106,7 +61,7 @@ export default function CartScreen({ navigation }) {
     }
   };
 
-  const handleClearCart = async () => {
+  const handleClearCart = () => {
     Alert.alert(
       'Xác nhận',
       'Bạn có chắc muốn xóa tất cả sản phẩm?',
@@ -114,10 +69,9 @@ export default function CartScreen({ navigation }) {
         { text: 'Hủy', onPress: () => {}, style: 'cancel' },
         {
           text: 'Xóa',
-          onPress: async () => {
+          onPress: () => {
             try {
-              CartRepository.clearCart(currentUser.id);
-              await loadCartItems();
+              clearCart(currentUser.id);
               Alert.alert('Thành công', 'Đã xóa tất cả sản phẩm');
             } catch (error) {
               console.error('❌ Error clearing cart:', error);

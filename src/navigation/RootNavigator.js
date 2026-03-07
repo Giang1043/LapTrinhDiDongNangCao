@@ -5,6 +5,7 @@ import IntroScreen from '../screens/IntroScreen';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
 import { useAuth } from '../hooks/useAuth';
+import { useCartStore } from '../store/useCartStore';
 import { realmManager } from '../database/realmManager';
 import { seedDatabase } from '../database/seedData';
 
@@ -20,7 +21,8 @@ const Stack = createNativeStackNavigator();
  */
 export default function RootNavigator() {
   const [isAppStarted, setIsAppStarted] = useState(false);
-  const { isLoggedIn, authChecked, saveAuthData, logout } = useAuth();
+  const { isLoggedIn, authChecked, currentUser, saveAuthData, logout } = useAuth();
+  const initializeCart = useCartStore((state) => state.initializeCart);
 
   /**
    * Initialize Realm database and seed initial data on app launch
@@ -36,6 +38,11 @@ export default function RootNavigator() {
         // Seed initial data if needed
         await seedDatabase();
 
+        // Initialize cart if user is logged in
+        if (currentUser?.id) {
+          await initializeCart(currentUser.id);
+        }
+
         console.log('✅ App initialization complete');
       } catch (error) {
         console.error('❌ Error initializing app:', error);
@@ -44,7 +51,7 @@ export default function RootNavigator() {
     };
 
     initRealm();
-  }, []);
+  }, [currentUser, initializeCart]);
 
   /**
    * Handle successful login/signup

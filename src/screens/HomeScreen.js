@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Text, Card, Appbar, Searchbar } from 'react-native-paper';
 import { useAuth } from '../hooks/useAuth';
+import { useCartStore } from '../store/useCartStore';
 import ProductRepository from '../database/repositories/ProductRepository';
 import CategoryRepository from '../database/repositories/CategoryRepository';
 
@@ -25,6 +26,7 @@ const COLORS = {
 
 export default function HomeScreen({ navigation }) {
   const { currentUser } = useAuth();
+  const addToCart = useCartStore((state) => state.addToCart);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -80,6 +82,16 @@ export default function HomeScreen({ navigation }) {
     navigation.navigate('ProductDetails', { productId: product.id });
   };
 
+  const handleAddToCart = (product) => {
+    if (!currentUser?.id) {
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập trước');
+      return;
+    }
+
+    addToCart(currentUser.id, product.id, 1);
+    Alert.alert('Thành công', `Đã thêm ${product.name} vào giỏ hàng`);
+  };
+
   // Filter products by search
   const filteredProducts = allProducts.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -100,19 +112,21 @@ export default function HomeScreen({ navigation }) {
 
   // Featured products carousel
   const renderFeaturedProduct = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.productCard}
-      onPress={() => handleProductPress(item)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.productImage}>
-        <Text style={styles.productImageText}>{item.image}</Text>
-        {item.discount > 0 && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>-{item.discount}%</Text>
-          </View>
-        )}
-      </View>
+    <View style={styles.productCard}>
+      <TouchableOpacity 
+        style={styles.productImageContainer}
+        onPress={() => handleProductPress(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.productImage}>
+          <Text style={styles.productImageText}>{item.image}</Text>
+          {item.discount > 0 && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>-{item.discount}%</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
       <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
       <View style={styles.ratingContainer}>
         <Text style={styles.ratingText}>⭐ {item.rating}</Text>
@@ -120,19 +134,27 @@ export default function HomeScreen({ navigation }) {
       <Text style={styles.productPrice}>
         {(item.price - (item.price * item.discount / 100)).toLocaleString('vi-VN')} đ
       </Text>
-    </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.addToCartButton}
+        onPress={() => handleAddToCart(item)}
+      >
+        <Text style={styles.addToCartText}>🛒 Thêm vào giỏ</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   // All products grid (2 columns)
   const renderProductGridItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.productGridCard}
-      onPress={() => handleProductPress(item)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.productGridImage}>
-        <Text style={styles.productGridImageText}>{item.image}</Text>
-      </View>
+    <View style={styles.productGridCard}>
+      <TouchableOpacity 
+        style={styles.productGridImageContainer}
+        onPress={() => handleProductPress(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.productGridImage}>
+          <Text style={styles.productGridImageText}>{item.image}</Text>
+        </View>
+      </TouchableOpacity>
       <Text style={styles.productGridName} numberOfLines={2}>{item.name}</Text>
       <View style={styles.productGridFooter}>
         <Text style={styles.productGridPrice}>
@@ -140,7 +162,13 @@ export default function HomeScreen({ navigation }) {
         </Text>
         <Text style={styles.ratingSmall}>⭐{item.rating}</Text>
       </View>
-    </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.gridAddToCartButton}
+        onPress={() => handleAddToCart(item)}
+      >
+        <Text style={styles.gridAddToCartText}>Thêm vào giỏ</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   if (loading) {
@@ -515,6 +543,42 @@ const styles = StyleSheet.create({
   ratingSmall: {
     fontSize: 12,
     color: COLORS.textLight,
+  },
+
+  // Add to cart button styles
+  addToCartButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    marginHorizontal: 8,
+    borderRadius: 8,
+  },
+  addToCartText: {
+    color: COLORS.white,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  productImageContainer: {
+    flex: 1,
+  },
+
+  // Grid add to cart button
+  gridAddToCartButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridAddToCartText: {
+    color: COLORS.white,
+    fontWeight: '600',
+    fontSize: 11,
+  },
+  productGridImageContainer: {
+    flex: 1,
   },
 
   bottomSpacing: {
