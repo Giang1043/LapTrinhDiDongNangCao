@@ -85,14 +85,14 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           {/* Error message */}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {/* Demo credentials hint */}
+          {/* Demo credentials hint
           <View style={styles.hintBox}>
             <Text style={styles.hintText}>
               📌 Tài khoản demo:
             </Text>
             <Text style={styles.hintValue}>Email: tigiang2004@gmail.com</Text>
             <Text style={styles.hintValue}>Mật khẩu: 123456</Text>
-          </View>
+          </View> */}
 
           {/* Login button */}
           <Button

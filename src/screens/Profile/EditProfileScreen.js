@@ -19,6 +19,7 @@ const EditProfileScreen = ({ navigation }) => {
   const [form, setForm] = useState({
     name: currentUser?.name || '',
     phone: currentUser?.phone || '',
+    address: currentUser?.address || '',
     avatar: currentUser?.avatar || 'https://via.placeholder.com/150',
   });
 
@@ -87,6 +88,19 @@ const EditProfileScreen = ({ navigation }) => {
         />
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.label}>Địa chỉ</Text>
+        <TextInput
+          style={[styles.input, styles.multilineInput]}
+          placeholder="Nhập địa chỉ giao hàng"
+          value={form.address}
+          onChangeText={(text) => setForm({ ...form, address: text })}
+          editable={!loading}
+          multiline
+          numberOfLines={3}
+        />
+      </View>
+
       <TouchableOpacity
         style={[styles.submitButton, loading && styles.submitButtonDisabled]}
         onPress={handleUpdate}
@@ -131,6 +145,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
+  },
+  multilineInput: {
+    minHeight: 90,
+    textAlignVertical: 'top',
   },
   button: {
     backgroundColor: '#f5f5f5',

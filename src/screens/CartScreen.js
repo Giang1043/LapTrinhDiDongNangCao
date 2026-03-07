@@ -11,6 +11,8 @@ import {
 import { Appbar, Card, Button } from 'react-native-paper';
 import { useAuth } from '../hooks/useAuth';
 import { useCartStore } from '../store/useCartStore';
+import OrderRepository from '../database/repositories/OrderRepository';
+import CartRepository from '../database/repositories/CartRepository';
 import { useFocusEffect as useNavFocusEffect } from '@react-navigation/native';
 
 const COLORS = {
@@ -84,13 +86,69 @@ export default function CartScreen({ navigation }) {
     );
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cartItems.length === 0) {
       Alert.alert('Giỏ hàng trống', 'Vui lòng thêm sản phẩm trước khi thanh toán');
       return;
     }
 
-    navigation.navigate('Checkout', { cartItems, total });
+    if (!currentUser?.id) {
+      Alert.alert('Lỗi', 'Chưa đăng nhập');
+      return;
+    }
+
+    // Check if address is provided
+    if (!currentUser.address || currentUser.address.trim() === '') {
+      Alert.alert(
+        'Chưa cập nhật địa chỉ',
+        'Vui lòng cập nhật địa chỉ giao hàng trong phần Tài khoản trước khi thanh toán'
+      );
+      return;
+    }
+
+    try {
+      // Prepare order data
+      const orderItems = cartItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        priceAtOrder: item.product?.price || 0,
+      }));
+
+      const orderData = {
+        userId: currentUser.id,
+        items: orderItems,
+        totalPrice: total,
+        deliveryAddress: currentUser.address,
+        notes: '',
+      };
+
+      // Create order in Realm
+      const newOrder = OrderRepository.createOrder(orderData);
+      console.log('✓ Order created:', newOrder);
+
+      // Clear cart
+      clearCart(currentUser.id);
+      CartRepository.clearCart(currentUser.id); // Ensure Realm is also cleared
+      console.log('✓ Cart cleared');
+
+      // Show success alert
+      Alert.alert(
+        'Đặt hàng thành công',
+        `Đơn hàng #${newOrder.id} đã được tạo. Thanh toán khi nhận hàng.`,
+        [
+          {
+            text: 'Xem chi tiết',
+            onPress: () => {
+              // Navigate to Order History in Profile tab
+              navigation.navigate('Profile', { screen: 'OrderHistory' });
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Error during checkout:', error);
+      Alert.alert('Lỗi', 'Không thể hoàn tất đơn hàng');
+    }
   };
 
   const renderCartItem = ({ item }) => (

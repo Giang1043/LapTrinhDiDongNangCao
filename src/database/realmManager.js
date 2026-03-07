@@ -27,7 +27,7 @@ class RealmManager {
       
       this.realm = await Realm.open({
         schema: allSchemas,
-        schemaVersion: 2,
+        schemaVersion: 4,
         migration: undefined,
       });
 

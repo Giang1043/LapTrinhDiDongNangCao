@@ -5,6 +5,8 @@ import EditProfileScreen from '../screens/Profile/EditProfileScreen';
 import ChangePasswordScreen from '../screens/Profile/ChangePasswordScreen';
 import ChangeEmailScreen from '../screens/Profile/ChangeEmailScreen';
 import ChangePhoneScreen from '../screens/Profile/ChangePhoneScreen';
+import OrderHistoryScreen from '../screens/OrderHistoryScreen';
+import OrderDetailsScreen from '../screens/OrderDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -63,6 +65,24 @@ export default function ProfileStack({ onLogout }) {
           title: 'Đổi số điện thoại',
           headerTintColor: '#fff',
           headerStyle: { backgroundColor: '#FF6B6B' },
+        }}
+      />
+
+      <Stack.Screen
+        name="OrderHistory"
+        component={OrderHistoryScreen}
+        options={{
+          headerShown: false,
+          title: 'Lịch sử mua hàng',
+        }}
+      />
+
+      <Stack.Screen
+        name="OrderDetails"
+        component={OrderDetailsScreen}
+        options={{
+          headerShown: false,
+          title: 'Chi tiết đơn hàng',
         }}
       />
     </Stack.Navigator>

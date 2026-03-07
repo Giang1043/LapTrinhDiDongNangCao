@@ -14,7 +14,7 @@ export class UserRepository {
   static createUser(userData) {
     try {
       const realm = realmManager.getRealm();
-      const { email, name, phone, passwordHash } = userData;
+      const { email, name, phone, address, passwordHash } = userData;
 
       let user;
       realm.write(() => {
@@ -27,6 +27,7 @@ export class UserRepository {
           email,
           name,
           phone,
+          address: address || null,
           passwordHash,
           isActive: false,
           createdAt: new Date(),
@@ -247,6 +248,7 @@ export class UserRepository {
       email: user.email,
       name: user.name,
       phone: user.phone,
+      address: user.address || null,
       passwordHash: user.passwordHash,
       isActive: user.isActive,
       // Convert Realm Date to timestamp for easier handling in React

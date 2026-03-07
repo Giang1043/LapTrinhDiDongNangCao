@@ -8,13 +8,13 @@ import { isValidEmail, isValidPassword, isValidPhone } from '../utils/validators
 import UserRepository from '../database/repositories/UserRepository';
 
 /**
- * Update user profile (name, phone, avatar)
+ * Update user profile (name, phone, address, avatar)
  */
 export const updateProfile = async (userId, updates) => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       try {
-        const { name, phone, avatar } = updates;
+        const { name, phone, address, avatar } = updates;
 
         // Validate inputs
         if (name && name.trim().length < 2) {
@@ -39,6 +39,7 @@ export const updateProfile = async (userId, updates) => {
         const updateData = {};
         if (name) updateData.name = name;
         if (phone) updateData.phone = phone;
+        if (address !== undefined) updateData.address = address || null;
         if (avatar !== undefined) updateData.avatar = avatar;
         updateData.updatedAt = new Date();
 

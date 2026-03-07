@@ -1,9 +1,39 @@
 /**
  * Seed Data
- * Initial data population for categories and products
+ * Initial data population for users, categories and products
+ * 
+ * Logic:
+ * - Users: Check if email already exists, only create if new
+ * - Categories: Only seed if no categories exist
+ * - Products: Only seed if no products exist
  */
 
 import { realmManager } from './realmManager';
+import { hashPassword } from '../utils/authHelpers';
+
+const defaultUsers = [
+  {
+    email: 'user1@example.com',
+    passwordHash: hashPassword('password123'),
+    name: 'Nguyễn Văn A',
+    phone: '0901234567',
+    address: 'Hà Nội, Việt Nam',
+  },
+  {
+    email: 'user2@example.com',
+    passwordHash: hashPassword('password123'),
+    name: 'Trần Thị B',
+    phone: '0912345678',
+    address: 'TP Hồ Chí Minh, Việt Nam',
+  },
+  {
+    email: 'test@example.com',
+    passwordHash: hashPassword('123456'),
+    name: 'Tester User',
+    phone: '0923456789',
+    address: 'Đà Nẵng, Việt Nam',
+  },
+];
 
 const defaultCategories = [
   { id: 1, name: 'Bánh mì', icon: '🥖', description: 'Bánh mì ngon tuyệt vời' },
@@ -241,53 +271,118 @@ export const isDataSeeded = () => {
 };
 
 /**
+ * Check if user with email already exists
+ * @param {string} email - User email
+ * @returns {boolean} True if user exists
+ */
+export const userExists = (email) => {
+  try {
+    const realm = realmManager.getRealm();
+    const user = realm.objects('User').filtered('email = $0', email);
+    return user.length > 0;
+  } catch (error) {
+    console.error('Error checking user existence:', error);
+    return false;
+  }
+};
+
+/**
  * Seed database with initial data
- * Only seeds if data doesn't exist
+ * - Users: Only create if email doesn't exist
+ * - Categories: Only seed if no categories exist
+ * - Products: Only seed if no products exist
  */
 export const seedDatabase = async () => {
   try {
-    if (isDataSeeded()) {
-      console.log('✓ Database already seeded, skipping...');
-      return;
-    }
-
     const realm = realmManager.getRealm();
-
-    console.log('🌱 Seeding database with initial data...');
+    console.log('🌱 Starting database seed process...');
 
     realm.write(() => {
-      // Seed categories
-      defaultCategories.forEach((category) => {
-        realm.create('Category', {
-          id: category.id,
-          name: category.name,
-          icon: category.icon,
-          description: category.description || '',
-          createdAt: new Date(),
-        });
-      });
-      console.log(`   ✓ Created ${defaultCategories.length} categories`);
+      // ==================
+      // SEED USERS (if not exists)
+      // ==================
+      let usersCreated = 0;
+      
+      defaultUsers.forEach((userData) => {
+        // Kiểm tra xem email đã tồn tại chưa
+        const existingUser = realm.objects('User').filtered('email = $0', userData.email);
+        
+        if (existingUser.length === 0) {
+          // LẤY ID LỚN NHẤT HIỆN TẠI VÀ CỘNG THÊM 1 (Tránh trùng lặp hoàn toàn)
+          const maxUser = realm.objects('User').sorted('id', true)[0];
+          const nextId = maxUser ? maxUser.id + 1 : 1;
 
-      // Seed products
-      defaultProducts.forEach((product) => {
-        realm.create('Product', {
-          id: product.id,
-          categoryId: product.categoryId,
-          name: product.name,
-          description: product.description || '',
-          image: product.image || '',
-          price: product.price,
-          discount: product.discount || 0,
-          rating: product.rating || 0,
-          stock: product.stock || 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+          realm.create('User', {
+            id: nextId,  // <--- Sử dụng ID tự động tính toán
+            email: userData.email,
+            passwordHash: userData.passwordHash,
+            name: userData.name,
+            phone: userData.phone,
+            address: userData.address || null,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+          usersCreated++;
+          console.log(`   ✓ Created user: ${userData.email} with ID: ${nextId}`);
+        } else {
+          console.log(`   ℹ User already exists, skipping: ${userData.email}`);
+        }
       });
-      console.log(`   ✓ Created ${defaultProducts.length} products`);
+
+      if (usersCreated > 0) {
+        console.log(`   ✓ Total new users created: ${usersCreated}`);
+      }
+
+      // ==================
+      // SEED CATEGORIES (only if no categories exist)
+      // ==================
+      const existingCategories = realm.objects('Category');
+      
+      if (existingCategories.length === 0) {
+        defaultCategories.forEach((category) => {
+          realm.create('Category', {
+            id: category.id,
+            name: category.name,
+            icon: category.icon,
+            description: category.description || '',
+            createdAt: new Date(),
+          });
+        });
+        console.log(`   ✓ Created ${defaultCategories.length} categories`);
+      } else {
+        console.log(`   ℹ Categories already exist (${existingCategories.length}), skipping`);
+      }
+
+      // ==================
+      // SEED PRODUCTS (only if no products exist)
+      // ==================
+      const existingProducts = realm.objects('Product');
+      
+      if (existingProducts.length === 0) {
+        defaultProducts.forEach((product) => {
+          realm.create('Product', {
+            id: product.id,
+            categoryId: product.categoryId,
+            name: product.name,
+            description: product.description || '',
+            image: product.image || '',
+            price: product.price,
+            discount: product.discount || 0,
+            rating: product.rating || 0,
+            stock: product.stock || 0,
+            soldQuantity: product.soldQuantity || 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        });
+        console.log(`   ✓ Created ${defaultProducts.length} products`);
+      } else {
+        console.log(`   ℹ Products already exist (${existingProducts.length}), skipping`);
+      }
     });
 
-    console.log('✓ Database seeding completed');
+    console.log('✓ Database seeding completed successfully');
   } catch (error) {
     console.error('❌ Error seeding database:', error);
     throw error;
@@ -297,4 +392,5 @@ export const seedDatabase = async () => {
 export default {
   seedDatabase,
   isDataSeeded,
+  userExists,
 };

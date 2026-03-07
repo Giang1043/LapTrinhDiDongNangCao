@@ -71,6 +71,11 @@ export default function UserScreen({ navigation, onLogout }) {
           </View>
           <View style={styles.divider} />
           <View style={styles.infoRow}>
+            <Text style={styles.label}>Địa chỉ:</Text>
+            <Text style={styles.value}>{currentUser.address || 'Chưa cập nhật'}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.infoRow}>
             <Text style={styles.label}>Email:</Text>
             <Text style={styles.value}>{currentUser.email}</Text>
           </View>
@@ -115,7 +120,10 @@ export default function UserScreen({ navigation, onLogout }) {
             <Text style={styles.menuText}>📱 Đổi số điện thoại</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation?.navigate('OrderHistory')}
+          >
             <Text style={styles.menuText}>📋 Lịch sử mua hàng</Text>
           </TouchableOpacity>
 

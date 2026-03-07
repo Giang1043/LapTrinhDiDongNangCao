@@ -1,20 +1,28 @@
 /**
  * Order Repository
  * All order-related database operations
+ * 
+ * Order Status Codes:
+ * 1 - Mới (Pending)
+ * 2 - Đã xác nhận (Confirmed - auto after 30 mins)
+ * 3 - Đang chuẩn bị (Preparing)
+ * 4 - Đang giao (Shipping)
+ * 5 - Hoàn thành (Completed)
+ * 6 - Đã hủy (Cancelled)
  */
 
 import { realmManager } from '../realmManager';
 
 export class OrderRepository {
   /**
-   * Create a new order
-   * @param {Object} orderData - {userId, items, totalPrice, deliveryAddress, paymentMethod?, notes?}
+   * Create a new order (COD - Cash On Delivery)
+   * @param {Object} orderData - {userId, items, totalPrice, deliveryAddress, notes?}
    * @returns {Object} Created order object
    */
   static createOrder(orderData) {
     try {
       const realm = realmManager.getRealm();
-      const { userId, items, totalPrice, deliveryAddress, paymentMethod, notes } = orderData;
+      const { userId, items, totalPrice, deliveryAddress, notes } = orderData;
 
       let order;
       realm.write(() => {
@@ -22,13 +30,13 @@ export class OrderRepository {
         const maxOrder = realm.objects('Order').sorted('id', true)[0];
         const newOrderId = maxOrder ? maxOrder.id + 1 : 1;
 
-        // Create order
+        // Create order with status = 1 (Mới)
         order = realm.create('Order', {
           id: newOrderId,
           userId,
           totalPrice,
-          status: 'pending',
-          paymentMethod: paymentMethod || 'cash',
+          status: 1, // Mới/Pending
+          paymentMethod: 'COD', // Cash On Delivery
           deliveryAddress,
           notes: notes || '',
           createdAt: new Date(),
@@ -85,15 +93,21 @@ export class OrderRepository {
   }
 
   /**
-   * Get order history for user
+   * Get order history for user (sorted by createdAt desc)
    * @param {number} userId - User ID
-   * @returns {Array} Array of order objects
+   * @returns {Array} Array of order objects with items
    */
   static getOrderHistory(userId) {
     try {
       const realm = realmManager.getRealm();
       const orders = realm.objects('Order').filtered('userId = $0', userId).sorted('createdAt', true);
-      return orders.map((o) => this._toObject(o));
+      
+      return orders.map((o) => {
+        const orderObj = this._toObject(o);
+        const items = realm.objects('OrderItem').filtered('orderId = $0', o.id);
+        orderObj.items = items.map((item) => this._itemToObject(item));
+        return orderObj;
+      });
     } catch (error) {
       console.error('❌ Error getting order history:', error);
       return [];
@@ -101,9 +115,35 @@ export class OrderRepository {
   }
 
   /**
+   * Get orders by status for user
+   * @param {number} userId - User ID
+   * @param {Array<number>} statusArray - Array of status codes [1, 2, 3, ...]
+   * @returns {Array} Array of order objects
+   */
+  static getOrdersByStatus(userId, statusArray) {
+    try {
+      const realm = realmManager.getRealm();
+      let orders = realm.objects('Order').filtered('userId = $0', userId);
+
+      // Filter by status array
+      orders = orders.filter((o) => statusArray.includes(o.status));
+
+      return Array.from(orders).map((o) => {
+        const orderObj = this._toObject(o);
+        const items = realm.objects('OrderItem').filtered('orderId = $0', o.id);
+        orderObj.items = items.map((item) => this._itemToObject(item));
+        return orderObj;
+      });
+    } catch (error) {
+      console.error('❌ Error getting orders by status:', error);
+      return [];
+    }
+  }
+
+  /**
    * Update order status
    * @param {number} orderId - Order ID
-   * @param {string} status - New status
+   * @param {number} status - New status code (1-6)
    * @returns {Object|null} Updated order or null
    */
   static updateOrderStatus(orderId, status) {
@@ -130,23 +170,70 @@ export class OrderRepository {
   }
 
   /**
-   * Get order items
-   * @param {number} orderId - Order ID
-   * @returns {Array} Array of order items
+   * Check and auto-update order statuses based on time
+   * If order status = 1 (Mới) and 30 minutes have passed -> update to status 2 (Đã xác nhận)
+   * @param {number} userId - User ID
+   * @returns {Array} Array of updated orders
    */
-  static getOrderItems(orderId) {
+  static updateOrderStatuses(userId) {
     try {
       const realm = realmManager.getRealm();
-      const items = realm.objects('OrderItem').filtered('orderId = $0', orderId);
-      return items.map((item) => this._itemToObject(item));
+      const now = new Date();
+      const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+      const orders = realm.objects('Order').filtered('userId = $0', userId);
+      const updatedOrders = [];
+
+      realm.write(() => {
+        orders.forEach((order) => {
+          // Check if order is still in status 1 (Mới)
+          if (order.status === 1) {
+            const timePassed = now.getTime() - new Date(order.createdAt).getTime();
+
+            // If 30+ minutes have passed, auto-update to status 2 (Đã xác nhận)
+            if (timePassed >= thirtyMinutes) {
+              order.status = 2;
+              order.updatedAt = new Date();
+              updatedOrders.push(this._toObject(order));
+              console.log(`✓ Order auto-updated: ${order.id} -> status 2 (Đã xác nhận)`);
+            }
+          }
+        });
+      });
+
+      return updatedOrders;
     } catch (error) {
-      console.error('❌ Error getting order items:', error);
+      console.error('❌ Error updating order statuses:', error);
       return [];
     }
   }
 
   /**
-   * Cancel order (mark as cancelled)
+   * Get order item details (enrich with product data)
+   * @param {number} orderId - Order ID
+   * @param {Function} getProductById - Function to fetch product details
+   * @returns {Array} Array of order items with product info
+   */
+  static getOrderItemsEnriched(orderId, getProductById) {
+    try {
+      const realm = realmManager.getRealm();
+      const items = realm.objects('OrderItem').filtered('orderId = $0', orderId);
+
+      return items.map((item) => {
+        const product = getProductById(item.productId);
+        return {
+          ...this._itemToObject(item),
+          product,
+        };
+      });
+    } catch (error) {
+      console.error('❌ Error getting enriched order items:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Cancel order (only if status = 1 and within 30 minutes)
    * @param {number} orderId - Order ID
    * @returns {Object|null} Updated order or null
    */
@@ -160,14 +247,24 @@ export class OrderRepository {
         return null;
       }
 
-      // Only allow cancellation if pending
-      if (order.status !== 'pending') {
+      // Only allow cancellation if status = 1 (Mới)
+      if (order.status !== 1) {
         console.warn(`Cannot cancel order with status: ${order.status}`);
         return null;
       }
 
+      // Check if within 30 minutes
+      const now = new Date();
+      const timePassed = now.getTime() - new Date(order.createdAt).getTime();
+      const thirtyMinutes = 30 * 60 * 1000;
+
+      if (timePassed > thirtyMinutes) {
+        console.warn(`Cannot cancel order after 30 minutes: ${orderId}`);
+        return null;
+      }
+
       realm.write(() => {
-        order.status = 'cancelled';
+        order.status = 6; // Đã hủy
         order.updatedAt = new Date();
       });
 
@@ -180,19 +277,71 @@ export class OrderRepository {
   }
 
   /**
-   * Get orders by status
-   * @param {string} status - Order status
-   * @returns {Array} Array of orders
+   * Check if order can be cancelled (status 1 and within 30 mins)
+   * @param {number} orderId - Order ID
+   * @returns {boolean}
    */
-  static getOrdersByStatus(status) {
+  static canCancelOrder(orderId) {
     try {
       const realm = realmManager.getRealm();
-      const orders = realm.objects('Order').filtered('status = $0', status);
-      return orders.map((o) => this._toObject(o));
+      const order = realm.objects('Order').filtered('id = $0', orderId)[0];
+
+      if (!order || order.status !== 1) {
+        return false;
+      }
+
+      const now = new Date();
+      const timePassed = now.getTime() - new Date(order.createdAt).getTime();
+      const thirtyMinutes = 30 * 60 * 1000;
+
+      return timePassed <= thirtyMinutes;
     } catch (error) {
-      console.error('❌ Error getting orders by status:', error);
-      return [];
+      console.error('❌ Error checking cancel eligibility:', error);
+      return false;
     }
+  }
+
+  /**
+   * Get time remaining until order auto-confirms (if status = 1)
+   * @param {number} orderId - Order ID
+   * @returns {number|null} Milliseconds remaining, or null if not applicable
+   */
+  static getTimeUntilAutoConfirm(orderId) {
+    try {
+      const realm = realmManager.getRealm();
+      const order = realm.objects('Order').filtered('id = $0', orderId)[0];
+
+      if (!order || order.status !== 1) {
+        return null;
+      }
+
+      const now = new Date();
+      const timePassed = now.getTime() - new Date(order.createdAt).getTime();
+      const thirtyMinutes = 30 * 60 * 1000;
+      const timeRemaining = thirtyMinutes - timePassed;
+
+      return timeRemaining > 0 ? timeRemaining : 0;
+    } catch (error) {
+      console.error('❌ Error calculating time until auto-confirm:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get order status text
+   * @param {number} status - Status code
+   * @returns {string} Status text
+   */
+  static getStatusText(status) {
+    const statusMap = {
+      1: 'Mới',
+      2: 'Đã xác nhận',
+      3: 'Đang chuẩn bị',
+      4: 'Đang giao',
+      5: 'Hoàn thành',
+      6: 'Đã hủy',
+    };
+    return statusMap[status] || 'Không xác định';
   }
 
   /**
