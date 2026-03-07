@@ -34,6 +34,12 @@ export default function HomeScreen({ navigation }) {
   const [topDiscountProducts, setTopDiscountProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
 
+  // Pagination state for infinite scroll
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreProducts, setHasMoreProducts] = useState(true);
+  const PRODUCTS_PER_PAGE = 10;
+
   // Load data from Realm on mount
   useEffect(() => {
     // Add small delay to ensure Realm is initialized
@@ -52,10 +58,6 @@ export default function HomeScreen({ navigation }) {
       const realmCategories = CategoryRepository.getAllCategories();
       setCategories(realmCategories);
 
-      // Load all products for search functionality
-      const realmAllProducts = ProductRepository.getAllProducts();
-      setAllProducts(realmAllProducts);
-
       // Load best selling products (top 10)
       const bestSelling = ProductRepository.getBestSellingProducts(10);
       setBestSellingProducts(bestSelling);
@@ -64,11 +66,19 @@ export default function HomeScreen({ navigation }) {
       const topDiscount = ProductRepository.getTopDiscountProducts(20);
       setTopDiscountProducts(topDiscount);
 
+      // Load first page of all products (pagination)
+      const firstPage = ProductRepository.getProductsPaginated(0, PRODUCTS_PER_PAGE);
+      setAllProducts(firstPage.items);
+      setCurrentPage(0);
+      setHasMoreProducts(firstPage.hasMore);
+
       console.log('✓ Loaded data from Realm:', {
         categories: realmCategories.length,
-        allProducts: realmAllProducts.length,
         bestSelling: bestSelling.length,
         topDiscount: topDiscount.length,
+        allProducts: firstPage.items.length,
+        totalProducts: firstPage.totalCount,
+        hasMore: firstPage.hasMore,
       });
     } catch (error) {
       console.error('❌ Error loading data:', error);
@@ -90,6 +100,27 @@ export default function HomeScreen({ navigation }) {
 
     addToCart(currentUser.id, product.id, 1);
     Alert.alert('Thành công', `Đã thêm ${product.name} vào giỏ hàng`);
+  };
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMoreProducts) return;
+
+    try {
+      setIsLoadingMore(true);
+      const nextPage = currentPage + 1;
+      const paginated = ProductRepository.getProductsPaginated(nextPage, PRODUCTS_PER_PAGE);
+
+      // Append new items to existing list
+      setAllProducts([...allProducts, ...paginated.items]);
+      setCurrentPage(nextPage);
+      setHasMoreProducts(paginated.hasMore);
+
+      console.log(`✓ Loaded page ${nextPage}: ${paginated.items.length} items`);
+    } catch (error) {
+      console.error('❌ Error loading more products:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   // Filter products by search
@@ -171,6 +202,103 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 
+  // List footer component with loading indicator
+  const renderListFooter = () => {
+    if (!isLoadingMore) return null;
+    return (
+      <View style={styles.loadingFooter}>
+        <ActivityIndicator size="small" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Đang tải thêm...</Text>
+      </View>
+    );
+  };
+
+  // List header component with all sections
+  const renderListHeader = () => (
+    <>
+      {/* Greeting Section */}
+      <View style={styles.greetingSection}>
+        <Text style={styles.greetingEmoji}>👋</Text>
+        <Text style={styles.greetingText}>
+          Xin chào, {currentUser?.name || 'Bạn'}!
+        </Text>
+        <Text style={styles.greetingSubtext}>
+          Chúc bạn có ngày tốt lành
+        </Text>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Tìm kiếm món ăn..."
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={styles.searchbar}
+          iconColor={COLORS.primary}
+          placeholderTextColor={COLORS.textLight}
+        />
+        <TouchableOpacity 
+          style={styles.advancedSearchButton}
+          onPress={() => navigation?.navigate('Search')}
+        >
+          <Text style={styles.advancedSearchButtonText}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Promotional Banner */}
+      <Card style={styles.banner}>
+        <Card.Content style={styles.bannerContent}>
+          <Text style={styles.bannerEmoji}>🎉</Text>
+          <Text style={styles.bannerTitle}>Khuyến mãi hôm nay</Text>
+          <Text style={styles.bannerSubtext}>Giảm tới 20% cho đơn hàng đầu tiên</Text>
+          <TouchableOpacity style={styles.bannerButton}>
+            <Text style={styles.bannerButtonText}>Khám phá</Text>
+          </TouchableOpacity>
+        </Card.Content>
+      </Card>
+
+      {/* Categories Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Danh mục</Text>
+        <FlatList
+          data={categories}
+          renderItem={renderCategoryItem}
+          keyExtractor={item => String(item.id)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={true}
+          style={styles.categoryList}
+        />
+      </View>
+
+      {/* Best Selling Products Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Sản phẩm bán chạy</Text>
+          <TouchableOpacity>
+            <Text style={styles.viewAllLink}>Xem tất cả →</Text>
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={bestSellingProducts}
+          renderItem={renderFeaturedProduct}
+          keyExtractor={item => String(item.id)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={true}
+          style={styles.productList}
+        />
+      </View>
+
+      {/* All Products Section Header */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>
+          Tất cả sản phẩm
+        </Text>
+      </View>
+    </>
+  );
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -185,100 +313,19 @@ export default function HomeScreen({ navigation }) {
         <Appbar.Content title="FoodApp" subtitle="Giao hàng nhanh" />
       </Appbar.Header>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Greeting Section */}
-        <View style={styles.greetingSection}>
-          <Text style={styles.greetingEmoji}>👋</Text>
-          <Text style={styles.greetingText}>
-            Xin chào, {currentUser?.name || 'Bạn'}!
-          </Text>
-          <Text style={styles.greetingSubtext}>
-            Chúc bạn có ngày tốt lành
-          </Text>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Searchbar
-            placeholder="Tìm kiếm món ăn..."
-            onChangeText={setSearchQuery}
-            value={searchQuery}
-            style={styles.searchbar}
-            iconColor={COLORS.primary}
-            placeholderTextColor={COLORS.textLight}
-          />
-          <TouchableOpacity 
-            style={styles.advancedSearchButton}
-            onPress={() => navigation?.navigate('Search')}
-          >
-            <Text style={styles.advancedSearchButtonText}>⚙️</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Promotional Banner */}
-        <Card style={styles.banner}>
-          <Card.Content style={styles.bannerContent}>
-            <Text style={styles.bannerEmoji}>🎉</Text>
-            <Text style={styles.bannerTitle}>Khuyến mãi hôm nay</Text>
-            <Text style={styles.bannerSubtext}>Giảm tới 20% cho đơn hàng đầu tiên</Text>
-            <TouchableOpacity style={styles.bannerButton}>
-              <Text style={styles.bannerButtonText}>Khám phá</Text>
-            </TouchableOpacity>
-          </Card.Content>
-        </Card>
-
-        {/* Categories Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Danh mục</Text>
-          <FlatList
-            data={categories}
-            renderItem={renderCategoryItem}
-            keyExtractor={item => String(item.id)}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            scrollEnabled={true}
-            style={styles.categoryList}
-          />
-        </View>
-
-        {/* Best Selling Products Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Sản phẩm bán chạy</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllLink}>Xem tất cả →</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={bestSellingProducts}
-            renderItem={renderFeaturedProduct}
-            keyExtractor={item => String(item.id)}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            scrollEnabled={true}
-            style={styles.productList}
-          />
-        </View>
-
-        {/* Top Discount Products Grid or Search Results */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {searchQuery ? 'Kết quả tìm kiếm' : 'Sản phẩm theo thứ tự giảm giá dần'}
-          </Text>
-          <FlatList
-            data={searchQuery ? filteredProducts : topDiscountProducts}
-            renderItem={renderProductGridItem}
-            keyExtractor={item => String(item.id)}
-            numColumns={2}
-            columnWrapperStyle={styles.gridRow}
-            scrollEnabled={false}
-            style={styles.grid}
-          />
-        </View>
-
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
+      <FlatList
+        data={searchQuery ? filteredProducts : allProducts}
+        renderItem={renderProductGridItem}
+        keyExtractor={item => String(item.id)}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        ListHeaderComponent={renderListHeader}
+        ListFooterComponent={renderListFooter}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        scrollIndicatorInsets={{ right: 1 }}
+        contentContainerStyle={styles.flatlistContent}
+      />
     </View>
   );
 }
@@ -579,6 +626,24 @@ const styles = StyleSheet.create({
   },
   productGridImageContainer: {
     flex: 1,
+  },
+
+  // Loading footer for infinite scroll
+  loadingFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+
+  // FlatList content container
+  flatlistContent: {
+    paddingHorizontal: 8,
   },
 
   bottomSpacing: {

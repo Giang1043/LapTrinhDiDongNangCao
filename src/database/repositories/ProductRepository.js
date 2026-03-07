@@ -263,6 +263,47 @@ export class ProductRepository {
   }
 
   /**
+   * Get products with pagination (Infinite Scroll)
+   * @param {number} page - Page number (0-indexed)
+   * @param {number} limit - Items per page (default 10)
+   * @returns {Object} {items, totalCount, hasMore}
+   */
+  static getProductsPaginated(page = 0, limit = 10) {
+    try {
+      const realm = realmManager.getRealm();
+      const allProducts = realm.objects('Product').sorted('id');
+      const totalCount = allProducts.length;
+
+      // Calculate offset
+      const offset = page * limit;
+
+      // Get items for this page
+      const pageItems = Array.from(allProducts).slice(offset, offset + limit);
+      const items = pageItems.map((p) => this._toObject(p));
+
+      // Check if there are more items
+      const hasMore = offset + limit < totalCount;
+
+      console.log(`📄 Loaded page ${page}: ${items.length} items (total: ${totalCount}, hasMore: ${hasMore})`);
+
+      return {
+        items,
+        totalCount,
+        hasMore,
+        page,
+      };
+    } catch (error) {
+      console.error('❌ Error getting paginated products:', error);
+      return {
+        items: [],
+        totalCount: 0,
+        hasMore: false,
+        page,
+      };
+    }
+  }
+
+  /**
    * Convert Realm object to plain JavaScript object
    * @private
    */
