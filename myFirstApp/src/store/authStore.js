@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
+import realmDB from '../database/realmDB';
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -10,14 +10,14 @@ const useAuthStore = create((set, get) => ({
   error: null,
   otpData: null, // { email, type, otp_for_testing }
 
-  // Load saved session
+  // Load saved session from Realm
   loadSession: async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      const token = await AsyncStorage.getItem('token');
-      if (userData && token) {
-        set({ user: JSON.parse(userData), token, isLoggedIn: true });
-      }
+      // For now, we'll load from the first user in the database
+      // In a real app, you might store user ID in a secure storage
+      const allUsers = await realmDB.getAllCategories(); // This is just a test
+      // We'll keep user null on app start and require login
+      // User data will be managed through login/register flows
     } catch (e) {
       console.log('Error loading session:', e);
     }
@@ -52,6 +52,17 @@ const useAuthStore = create((set, get) => ({
         phone: otpData.phone,
         otp,
       });
+      
+      // Save user to Realm database
+      await realmDB.createUser({
+        id: result.user.id,
+        email: otpData.email,
+        password: otpData.password,
+        fullName: otpData.fullName,
+        phone: otpData.phone,
+        avatar: result.user.avatar || '',
+      });
+      
       set({ isLoading: false, otpData: null });
       return result;
     } catch (e) {
@@ -65,8 +76,6 @@ const useAuthStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const result = await authService.login({ email, password });
-      await AsyncStorage.setItem('user', JSON.stringify(result.user));
-      await AsyncStorage.setItem('token', result.token);
       set({
         isLoading: false,
         user: result.user,
@@ -103,6 +112,13 @@ const useAuthStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const result = await authService.resetPassword({ email: otpData.email, otp, newPassword });
+      
+      // Update user password in Realm
+      const user = await realmDB.getUserByEmail(otpData.email);
+      if (user) {
+        await realmDB.updateUser(user.id, { password: newPassword });
+      }
+      
       set({ isLoading: false, otpData: null });
       return result;
     } catch (e) {
@@ -114,8 +130,6 @@ const useAuthStore = create((set, get) => ({
   // Logout
   logout: async () => {
     await authService.logout();
-    await AsyncStorage.removeItem('user');
-    await AsyncStorage.removeItem('token');
     set({ user: null, token: null, isLoggedIn: false, otpData: null });
   },
 

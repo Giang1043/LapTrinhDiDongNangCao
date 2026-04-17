@@ -10,7 +10,10 @@ export default function OrdersScreen({ navigation }) {
   useEffect(() => { loadOrders(); }, []);
 
   const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
-  const formatDate = (ts) => new Date(ts).toLocaleString('vi-VN');
+  const formatDate = (ts) => {
+    if (!ts) return '-';
+    return ts instanceof Date ? ts.toLocaleString('vi-VN') : new Date(ts).toLocaleString('vi-VN');
+  };
 
   const renderOrder = ({ item }) => (
     <TouchableOpacity
@@ -28,7 +31,7 @@ export default function OrdersScreen({ navigation }) {
       </View>
       <Text style={styles.orderDate}>{formatDate(item.createdAt)}</Text>
       <Text style={styles.orderItems}>
-        {item.items.map(i => `${i.product.name} x${i.quantity}`).join(', ')}
+        {item.items.map(i => `${i.productName} x${i.quantity}`).join(', ')}
       </Text>
       <View style={styles.orderFooter}>
         <Text style={styles.orderTotal}>{formatPrice(item.total)}</Text>

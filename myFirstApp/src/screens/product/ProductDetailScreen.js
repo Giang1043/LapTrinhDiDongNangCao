@@ -20,12 +20,25 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
 
-  const handleAddToCart = () => {
-    addToCart(product);
-    Alert.alert('Thành công', `Đã thêm "${product.name}" vào giỏ hàng`, [
-      { text: 'Tiếp tục mua', style: 'cancel' },
-      { text: 'Xem giỏ hàng', onPress: () => navigation.navigate('MainTabs', { screen: 'Cart' }) },
-    ]);
+  const handleAddToCart = async () => {
+    try {
+      await addToCart(product);
+      Alert.alert('Thành công', `Đã thêm "${product.name}" vào giỏ hàng`, [
+        { text: 'Tiếp tục mua', style: 'cancel' },
+        { text: 'Xem giỏ hàng', onPress: () => navigation.navigate('MainTabs', { screen: 'Cart' }) },
+      ]);
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể thêm sản phẩm vào giỏ hàng');
+    }
+  };
+
+  const handleBuyNow = async () => {
+    try {
+      await addToCart(product);
+      navigation.navigate('Checkout');
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể thêm sản phẩm vào giỏ hàng');
+    }
   };
 
   return (
@@ -80,10 +93,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         <Button
           mode="contained"
           icon="lightning-bolt"
-          onPress={() => {
-            addToCart(product);
-            navigation.navigate('Checkout');
-          }}
+          onPress={handleBuyNow}
           style={styles.buyButton}
           buttonColor="#FF6B35"
         >

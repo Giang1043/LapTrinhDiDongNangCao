@@ -12,6 +12,22 @@ export default function CartScreen({ navigation }) {
   const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
   const total = getTotal();
 
+  const handleUpdateQuantity = async (productId, newQuantity) => {
+    try {
+      await updateQuantity(productId, newQuantity);
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể cập nhật số lượng');
+    }
+  };
+
+  const handleRemoveFromCart = async (productId) => {
+    try {
+      await removeFromCart(productId);
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể xóa sản phẩm');
+    }
+  };
+
   const renderItem = ({ item }) => (
     <View style={styles.cartItem}>
       <Image source={{ uri: item.product.image }} style={styles.itemImage} />
@@ -20,16 +36,31 @@ export default function CartScreen({ navigation }) {
         <Text style={styles.itemShop}>{item.product.shop}</Text>
         <Text style={styles.itemPrice}>{formatPrice(item.product.price)}</Text>
         <View style={styles.quantityRow}>
-          <IconButton icon="minus-circle-outline" size={24} onPress={() => updateQuantity(item.product.id, item.quantity - 1)} iconColor="#FF6B35" />
+          <IconButton 
+            icon="minus-circle-outline" 
+            size={24} 
+            onPress={() => handleUpdateQuantity(item.product.id, item.quantity - 1)} 
+            iconColor="#FF6B35" 
+          />
           <Text style={styles.quantity}>{item.quantity}</Text>
-          <IconButton icon="plus-circle-outline" size={24} onPress={() => updateQuantity(item.product.id, item.quantity + 1)} iconColor="#FF6B35" />
+          <IconButton 
+            icon="plus-circle-outline" 
+            size={24} 
+            onPress={() => handleUpdateQuantity(item.product.id, item.quantity + 1)} 
+            iconColor="#FF6B35" 
+          />
           <View style={{ flex: 1 }} />
-          <IconButton icon="delete-outline" size={22} onPress={() => {
-            Alert.alert('Xóa', `Xóa "${item.product.name}" khỏi giỏ hàng?`, [
-              { text: 'Hủy', style: 'cancel' },
-              { text: 'Xóa', onPress: () => removeFromCart(item.product.id), style: 'destructive' },
-            ]);
-          }} iconColor="#FF3B30" />
+          <IconButton 
+            icon="delete-outline" 
+            size={22} 
+            onPress={() => {
+              Alert.alert('Xóa', `Xóa "${item.product.name}" khỏi giỏ hàng?`, [
+                { text: 'Hủy', style: 'cancel' },
+                { text: 'Xóa', onPress: () => handleRemoveFromCart(item.product.id), style: 'destructive' },
+              ]);
+            }} 
+            iconColor="#FF3B30" 
+          />
         </View>
       </View>
     </View>

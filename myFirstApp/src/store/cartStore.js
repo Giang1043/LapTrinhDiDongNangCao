@@ -1,66 +1,100 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import realmDB from '../database/realmDB';
 
 const useCartStore = create((set, get) => ({
-  items: [], // [{ product, quantity }]
+  items: [], // [{ product, quantity }] - simplified format for UI
   isLoading: false,
 
-  // Load cart from storage
+  // Load cart from Realm database
   loadCart: async () => {
     try {
-      const data = await AsyncStorage.getItem('cart');
-      if (data) set({ items: JSON.parse(data) });
+      const cartItems = await realmDB.getAllCartItems();
+      // Convert Realm objects to plain objects with product structure
+      const items = cartItems.map(item => ({
+        product: {
+          id: item.productId,
+          name: item.productName,
+          price: item.price,
+          image: item.image,
+          categoryId: item.categoryId,
+        },
+        quantity: item.quantity,
+      }));
+      set({ items });
     } catch (e) {
       console.log('Error loading cart:', e);
     }
   },
 
-  // Save cart to storage
-  _saveCart: async (items) => {
-    await AsyncStorage.setItem('cart', JSON.stringify(items));
-  },
-
   // Add to cart
-  addToCart: (product, quantity = 1) => {
-    const { items, _saveCart } = get();
-    const existingIndex = items.findIndex(i => i.product.id === product.id);
-    let newItems;
-    if (existingIndex >= 0) {
-      newItems = [...items];
-      newItems[existingIndex] = { ...newItems[existingIndex], quantity: newItems[existingIndex].quantity + quantity };
-    } else {
-      newItems = [...items, { product, quantity }];
+  addToCart: async (product, quantity = 1) => {
+    try {
+      const { items } = get();
+      await realmDB.addToCart(product, quantity);
+      
+      // Update local state
+      const existingIndex = items.findIndex(i => i.product.id === product.id);
+      let newItems;
+      if (existingIndex >= 0) {
+        newItems = [...items];
+        newItems[existingIndex] = { 
+          ...newItems[existingIndex], 
+          quantity: newItems[existingIndex].quantity + quantity 
+        };
+      } else {
+        newItems = [...items, { product, quantity }];
+      }
+      set({ items: newItems });
+    } catch (e) {
+      console.error('Error adding to cart:', e);
+      throw e;
     }
-    set({ items: newItems });
-    _saveCart(newItems);
   },
 
   // Update quantity
-  updateQuantity: (productId, quantity) => {
-    const { items, _saveCart } = get();
-    if (quantity <= 0) {
-      const newItems = items.filter(i => i.product.id !== productId);
-      set({ items: newItems });
-      _saveCart(newItems);
-    } else {
-      const newItems = items.map(i => i.product.id === productId ? { ...i, quantity } : i);
-      set({ items: newItems });
-      _saveCart(newItems);
+  updateQuantity: async (productId, quantity) => {
+    try {
+      const { items } = get();
+      
+      if (quantity <= 0) {
+        await realmDB.removeFromCart(productId);
+        const newItems = items.filter(i => i.product.id !== productId);
+        set({ items: newItems });
+      } else {
+        await realmDB.updateCartItemQuantity(productId, quantity);
+        const newItems = items.map(i => 
+          i.product.id === productId ? { ...i, quantity } : i
+        );
+        set({ items: newItems });
+      }
+    } catch (e) {
+      console.error('Error updating cart quantity:', e);
+      throw e;
     }
   },
 
   // Remove from cart
-  removeFromCart: (productId) => {
-    const { items, _saveCart } = get();
-    const newItems = items.filter(i => i.product.id !== productId);
-    set({ items: newItems });
-    _saveCart(newItems);
+  removeFromCart: async (productId) => {
+    try {
+      const { items } = get();
+      await realmDB.removeFromCart(productId);
+      const newItems = items.filter(i => i.product.id !== productId);
+      set({ items: newItems });
+    } catch (e) {
+      console.error('Error removing from cart:', e);
+      throw e;
+    }
   },
 
   // Clear cart
   clearCart: async () => {
-    set({ items: [] });
-    await AsyncStorage.removeItem('cart');
+    try {
+      await realmDB.clearCart();
+      set({ items: [] });
+    } catch (e) {
+      console.error('Error clearing cart:', e);
+      throw e;
+    }
   },
 
   // Get total

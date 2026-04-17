@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import realmDB from '../database/realmDB';
 
 // Order statuses
 export const ORDER_STATUS = {
@@ -33,23 +33,15 @@ const useOrderStore = create((set, get) => ({
   orders: [],
   isLoading: false,
 
-  // Load orders from storage
+  // Load orders from Realm database
   loadOrders: async () => {
     try {
-      const data = await AsyncStorage.getItem('orders');
-      if (data) {
-        let orders = JSON.parse(data);
-        // Auto-confirm orders after 30 minutes
-        const now = Date.now();
-        orders = orders.map(order => {
-          if (order.status === ORDER_STATUS.NEW && now - order.createdAt > 30 * 60 * 1000) {
-            return { ...order, status: ORDER_STATUS.CONFIRMED, confirmedAt: order.createdAt + 30 * 60 * 1000 };
-          }
-          return order;
-        });
-        set({ orders });
-        await AsyncStorage.setItem('orders', JSON.stringify(orders));
-      }
+      // Auto-confirm orders that are 30+ minutes old
+      await realmDB.autoConfirmOrders();
+      
+      // Fetch all orders from Realm
+      const orders = await realmDB.getAllOrders();
+      set({ orders });
     } catch (e) {
       console.log('Error loading orders:', e);
     }
@@ -58,81 +50,99 @@ const useOrderStore = create((set, get) => ({
   // Place order
   placeOrder: async ({ items, address, phone, paymentMethod, note }) => {
     set({ isLoading: true });
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const { orders } = get();
-    const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-    const newOrder = {
-      id: `ORD${Date.now()}`,
-      items,
-      address,
-      phone,
-      paymentMethod: paymentMethod || 'COD',
-      note: note || '',
-      total,
-      status: ORDER_STATUS.NEW,
-      createdAt: Date.now(),
-      confirmedAt: null,
-      cancelledAt: null,
-      cancelReason: null,
-    };
-    const updated = [newOrder, ...orders];
-    set({ orders: updated, isLoading: false });
-    await AsyncStorage.setItem('orders', JSON.stringify(updated));
-    return newOrder;
+    try {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Create order in Realm
+      const newOrder = await realmDB.placeOrder({
+        items,
+        address,
+        phone,
+        paymentMethod: paymentMethod || 'COD',
+        note: note || '',
+      });
+      
+      // Update local state
+      const { orders } = get();
+      set({ 
+        orders: [newOrder, ...orders], 
+        isLoading: false 
+      });
+      
+      return newOrder;
+    } catch (e) {
+      set({ isLoading: false });
+      throw e;
+    }
   },
 
   // Cancel order (only within 30 min or request cancel if preparing)
   cancelOrder: async (orderId, reason) => {
-    const { orders } = get();
-    const order = orders.find(o => o.id === orderId);
-    if (!order) throw new Error('Không tìm thấy đơn hàng');
+    try {
+      const { orders } = get();
+      const order = orders.find(o => o.id === orderId);
+      if (!order) throw new Error('Không tìm thấy đơn hàng');
 
-    const minutesSinceOrder = (Date.now() - order.createdAt) / (1000 * 60);
+      const minutesSinceOrder = (Date.now() - order.createdAt.getTime()) / (1000 * 60);
 
-    if (order.status === ORDER_STATUS.DELIVERED || order.status === ORDER_STATUS.CANCELLED) {
-      throw new Error('Không thể hủy đơn hàng này');
+      if (order.status === ORDER_STATUS.DELIVERED || order.status === ORDER_STATUS.CANCELLED) {
+        throw new Error('Không thể hủy đơn hàng này');
+      }
+
+      if (order.status === ORDER_STATUS.DELIVERING) {
+        throw new Error('Đơn hàng đang giao, không thể hủy');
+      }
+
+      // If > 30 min and status is PREPARING -> send cancel request
+      if (order.status === ORDER_STATUS.PREPARING) {
+        // Mock: send cancel request to shop (update in Realm)
+        await realmDB.updateOrderStatus(orderId, ORDER_STATUS.CANCELLED);
+        await realmDB.cancelOrder(orderId, reason || 'Khách yêu cầu hủy');
+        
+        // Update local state
+        const updated = await realmDB.getAllOrders();
+        set({ orders: updated });
+        
+        return { type: 'request', message: 'Đã gửi yêu cầu hủy đơn cho shop' };
+      }
+
+      // Within 30 min -> direct cancel
+      if (minutesSinceOrder <= 30 || order.status <= ORDER_STATUS.CONFIRMED) {
+        await realmDB.cancelOrder(orderId, reason || 'Khách hủy');
+        
+        // Update local state
+        const updated = await realmDB.getAllOrders();
+        set({ orders: updated });
+        
+        return { type: 'cancelled', message: 'Đã hủy đơn hàng' };
+      }
+
+      throw new Error('Đã quá 30 phút, không thể hủy trực tiếp');
+    } catch (e) {
+      console.error('Error cancelling order:', e);
+      throw e;
     }
-
-    if (order.status === ORDER_STATUS.DELIVERING) {
-      throw new Error('Đơn hàng đang giao, không thể hủy');
-    }
-
-    // If > 30 min and status is PREPARING -> send cancel request
-    if (order.status === ORDER_STATUS.PREPARING) {
-      // Mock: send cancel request to shop
-      const updated = orders.map(o =>
-        o.id === orderId ? { ...o, cancelRequested: true, cancelReason: reason || 'Khách yêu cầu hủy' } : o
-      );
-      set({ orders: updated });
-      await AsyncStorage.setItem('orders', JSON.stringify(updated));
-      return { type: 'request', message: 'Đã gửi yêu cầu hủy đơn cho shop' };
-    }
-
-    // Within 30 min -> direct cancel
-    if (minutesSinceOrder <= 30 || order.status <= ORDER_STATUS.CONFIRMED) {
-      const updated = orders.map(o =>
-        o.id === orderId ? { ...o, status: ORDER_STATUS.CANCELLED, cancelledAt: Date.now(), cancelReason: reason || 'Khách hủy' } : o
-      );
-      set({ orders: updated });
-      await AsyncStorage.setItem('orders', JSON.stringify(updated));
-      return { type: 'cancelled', message: 'Đã hủy đơn hàng' };
-    }
-
-    throw new Error('Đã quá 30 phút, không thể hủy trực tiếp');
   },
 
   // Simulate status progression (for testing)
   advanceOrderStatus: async (orderId) => {
-    const { orders } = get();
-    const updated = orders.map(o => {
-      if (o.id === orderId && o.status < ORDER_STATUS.DELIVERED && o.status !== ORDER_STATUS.CANCELLED) {
-        return { ...o, status: o.status + 1 };
+    try {
+      const { orders } = get();
+      const order = orders.find(o => o.id === orderId);
+      
+      if (order && order.status < ORDER_STATUS.DELIVERED && order.status !== ORDER_STATUS.CANCELLED) {
+        const newStatus = order.status + 1;
+        await realmDB.updateOrderStatus(orderId, newStatus);
+        
+        // Update local state
+        const updated = await realmDB.getAllOrders();
+        set({ orders: updated });
       }
-      return o;
-    });
-    set({ orders: updated });
-    await AsyncStorage.setItem('orders', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Error advancing order status:', e);
+      throw e;
+    }
   },
 }));
 

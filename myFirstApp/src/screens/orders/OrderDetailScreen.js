@@ -25,9 +25,13 @@ export default function OrderDetailScreen({ route, navigation }) {
   }
 
   const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
-  const formatDate = (ts) => ts ? new Date(ts).toLocaleString('vi-VN') : '-';
+  const formatDate = (ts) => {
+    if (!ts) return '-';
+    return ts instanceof Date ? ts.toLocaleString('vi-VN') : new Date(ts).toLocaleString('vi-VN');
+  };
 
-  const minutesSinceOrder = (Date.now() - order.createdAt) / (1000 * 60);
+  const createdAtTime = order.createdAt instanceof Date ? order.createdAt.getTime() : order.createdAt;
+  const minutesSinceOrder = (Date.now() - createdAtTime) / (1000 * 60);
   const canCancel = order.status < ORDER_STATUS.DELIVERING && order.status !== ORDER_STATUS.CANCELLED;
   const isDirectCancel = minutesSinceOrder <= 30 || order.status <= ORDER_STATUS.CONFIRMED;
 
@@ -98,8 +102,8 @@ export default function OrderDetailScreen({ route, navigation }) {
         <Text style={styles.sectionTitle}>Chi tiết đơn hàng</Text>
         {order.items.map((item, idx) => (
           <View key={idx} style={styles.itemRow}>
-            <Text style={styles.itemName}>{item.product.name} x{item.quantity}</Text>
-            <Text style={styles.itemPrice}>{formatPrice(item.product.price * item.quantity)}</Text>
+            <Text style={styles.itemName}>{item.productName} x{item.quantity}</Text>
+            <Text style={styles.itemPrice}>{formatPrice(item.price * item.quantity)}</Text>
           </View>
         ))}
         <Divider style={{ marginVertical: 8 }} />
