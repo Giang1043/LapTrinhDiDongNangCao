@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { View, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Searchbar, Text, Chip, IconButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mockProducts, mockCategories } from '../../services/mockData';
+import realmDB from '../../database/realmDB';
 
 export default function SearchScreen({ navigation }) {
   const [query, setQuery] = useState('');
@@ -10,9 +10,24 @@ export default function SearchScreen({ navigation }) {
   const [sortBy, setSortBy] = useState(null);
   const [searchHistory, setSearchHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(true);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
+    const initializeSearch = async () => {
+      try {
+        const realmProducts = await realmDB.getAllProducts();
+        const realmCategories = await realmDB.getAllCategories();
+        setProducts(realmProducts);
+        setCategories(realmCategories);
+        console.log('✅ SearchScreen: Loaded from Realm -', realmProducts.length, 'products');
+      } catch (error) {
+        console.error('❌ Error loading data:', error);
+      }
+    };
+    
     loadHistory();
+    initializeSearch();
   }, []);
 
   const loadHistory = async () => {
@@ -47,7 +62,7 @@ export default function SearchScreen({ navigation }) {
   };
 
   const filteredProducts = useMemo(() => {
-    let results = [...mockProducts];
+    let results = [...products];
 
     // Filter by search query
     if (query.trim()) {
@@ -124,7 +139,7 @@ export default function SearchScreen({ navigation }) {
 
       {/* Category filter */}
       <FlatList
-        data={[{ id: null, name: 'Tất cả' }, ...mockCategories]}
+        data={[{ id: null, name: 'Tất cả' }, ...categories]}
         renderItem={({ item }) => (
           <Chip
             selected={selectedCategory === item.id}

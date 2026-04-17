@@ -1,17 +1,36 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, Card } from 'react-native-paper';
 import { TouchableOpacity, Image } from 'react-native';
-import { mockProducts } from '../../services/mockData';
+import realmDB from '../../database/realmDB';
 
 const PAGE_SIZE = 10;
 
 export default function CategoryProductsScreen({ route, navigation }) {
   const { categoryId, categoryName } = route.params;
-  const allProducts = mockProducts.filter(p => p.categoryId === categoryId);
-  const [displayedProducts, setDisplayedProducts] = useState(allProducts.slice(0, PAGE_SIZE));
+  const [allProducts, setAllProducts] = useState([]);
+  const [displayedProducts, setDisplayedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const loadCategoryProducts = async () => {
+      try {
+        setInitialLoading(true);
+        const products = await realmDB.getProductsByCategory(categoryId);
+        setAllProducts(products);
+        setDisplayedProducts(products.slice(0, PAGE_SIZE));
+        setPage(1);
+        console.log('✅ Loaded', products.length, 'products for category', categoryId);
+      } catch (error) {
+        console.error('❌ Error loading products:', error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    loadCategoryProducts();
+  }, [categoryId]);
 
   const loadMore = useCallback(() => {
     if (loading || displayedProducts.length >= allProducts.length) return;

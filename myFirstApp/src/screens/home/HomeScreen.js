@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
-import { View, ScrollView, FlatList, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, FlatList, StyleSheet, TouchableOpacity, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { Text, Card, Chip, Searchbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { mockCategories, mockProducts } from '../../services/mockData';
+import realmDB from '../../database/realmDB';
 import useAuthStore from '../../store/authStore';
 import useCartStore from '../../store/cartStore';
 
@@ -17,14 +17,40 @@ const BANNERS = [
 export default function HomeScreen({ navigation }) {
   const { user } = useAuthStore();
   const loadCart = useCartStore(s => s.loadCart);
+  
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadCart(); }, []);
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        setLoading(true);
+        
+        // Load từ Realm Database
+        const realmCategories = await realmDB.getAllCategories();
+        const realmProducts = await realmDB.getAllProducts();
+        
+        setCategories(realmCategories);
+        setProducts(realmProducts);
+        
+        console.log('✅ HomeScreen: Loaded from Realm -', realmCategories.length, 'categories,', realmProducts.length, 'products');
+      } catch (error) {
+        console.error('❌ Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadCart();
+    initializeData();
+  }, [loadCart]);
 
   // Top 10 best sellers (sorted by sold count)
-  const topSelling = [...mockProducts].sort((a, b) => b.sold - a.sold).slice(0, 10);
+  const topSelling = [...products].sort((a, b) => b.sold - a.sold).slice(0, 10);
 
   // Top 20 discounted (sorted by discount %)
-  const discounted = [...mockProducts].sort((a, b) => b.discount - a.discount).slice(0, 20);
+  const discounted = [...products].sort((a, b) => b.discount - a.discount).slice(0, 20);
 
   const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
 
@@ -116,14 +142,18 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>📂 Danh mục</Text>
         </View>
-        <FlatList
-          data={mockCategories}
-          renderItem={renderCategory}
-          keyExtractor={item => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryList}
-        />
+        {loading ? (
+          <ActivityIndicator size="large" color="#FF6B35" style={{ marginVertical: 20 }} />
+        ) : (
+          <FlatList
+            data={categories}
+            renderItem={renderCategory}
+            keyExtractor={item => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryList}
+          />
+        )}
       </View>
 
       {/* Top 10 best sellers - horizontal*/}

@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import useAuthStore from '../../store/authStore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { generateOTP, storeOTP, verifyOTP } from '../../services/mockData';
+import realmDB from '../../database/realmDB';
 import { sendOTPEmail } from '../../services/emailService';
 
 export default function ChangePhoneScreen({ navigation }) {
@@ -18,30 +17,40 @@ export default function ChangePhoneScreen({ navigation }) {
       return Alert.alert('Lỗi', 'Số điện thoại không hợp lệ');
     }
     setLoading(true);
-    const newOtp = generateOTP();
-    storeOTP(`phone_${phone}`, newOtp);
-    await sendOTPEmail(user?.email, newOtp, user?.fullName);
-    setLoading(false);
-    setStep(2);
-    Alert.alert('OTP đã gửi', `Mã OTP đã gửi đến email ${user?.email}. Kiểm tra hộp thư.`);
+    try {
+      const newOtp = realmDB.generateOTP();
+      await realmDB.storeOTP(`phone_${phone}`, newOtp);
+      await sendOTPEmail(user?.email, newOtp, user?.fullName);
+      setLoading(false);
+      setStep(2);
+      Alert.alert('OTP đã gửi', `Mã OTP đã gửi đến email ${user?.email}. Kiểm tra hộp thư.`);
+    } catch (error) {
+      setLoading(false);
+      Alert.alert('Lỗi', error.message || 'Có lỗi xảy ra');
+    }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (otp.length !== 6) return Alert.alert('Lỗi', 'OTP phải có 6 số');
     setLoading(true);
-    setTimeout(async () => {
-      const valid = verifyOTP(`phone_${phone}`, otp);
+    try {
+      const valid = await realmDB.verifyOTP(`phone_${phone}`, otp);
       if (!valid) {
         setLoading(false);
         return Alert.alert('Lỗi', 'OTP không hợp lệ');
       }
+      // Update phone in Realm
+      await realmDB.updateUser(user?.id, { phone });
+      // Update Zustand state
       const updatedUser = { ...user, phone };
       useAuthStore.setState({ user: updatedUser });
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       setLoading(false);
       Alert.alert('Thành công', 'Đổi số điện thoại thành công');
       navigation.goBack();
-    }, 500);
+    } catch (error) {
+      setLoading(false);
+      Alert.alert('Lỗi', error.message || 'Có lỗi xảy ra');
+    }
   };
 
   return (

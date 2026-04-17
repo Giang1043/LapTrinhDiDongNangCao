@@ -1,14 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Image, Alert } from 'react-native';
-import { Text, Button, Divider } from 'react-native-paper';
+import { Text, Button, Divider, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { mockProducts } from '../../services/mockData';
+import realmDB from '../../database/realmDB';
 import useCartStore from '../../store/cartStore';
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { productId } = route.params;
-  const product = mockProducts.find(p => p.id === productId);
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const addToCart = useCartStore(s => s.addToCart);
+
+  useEffect(() => {
+    loadProduct();
+  }, []);
+
+  const loadProduct = async () => {
+    try {
+      setLoading(true);
+      const prod = await realmDB.getProductById(productId);
+      if (prod) {
+        setProduct({ ...prod });
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading product:', error);
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#FF6B35" style={styles.loader} />
+      </View>
+    );
+  }
 
   if (!product) {
     return (

@@ -1,5 +1,38 @@
 import Realm from 'realm';
 
+// ==================== SEED DATA ====================
+const SEED_TEST_USER = {
+  id: '1',
+  email: 'hieu@test.com',
+  password: '123456',
+  fullName: 'Hoang Ba Hieu',
+  phone: '0901234567',
+  avatar: 'https://i.pravatar.cc/150?img=3',
+};
+
+const SEED_CATEGORIES = [
+  { id: '1', name: 'Cơm', image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=200' },
+  { id: '2', name: 'Phở & Bún', image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=200' },
+  { id: '3', name: 'Pizza', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=200' },
+  { id: '4', name: 'Burger', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200' },
+  { id: '5', name: 'Trà sữa', image: 'https://images.unsplash.com/photo-1558857563-b371033873b8?w=200' },
+  { id: '6', name: 'Gà rán', image: 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=200' },
+  { id: '7', name: 'Bánh mì', image: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=200' },
+  { id: '8', name: 'Lẩu', image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=200' },
+  { id: '9', name: 'Sushi', image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200' },
+  { id: '10', name: 'Đồ uống', image: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=200' },
+];
+
+const SEED_PRODUCTS = [
+  { id: '1', name: 'Cơm tấm sườn bì chả', price: 45000, originalPrice: 55000, discount: 18, image: 'https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?w=400', categoryId: '1', sold: 320, rating: 4.8, description: 'Cơm tấm sườn bì chả truyền thống Sài Gòn', shop: 'Quán Cơm Tấm Sài Gòn' },
+  { id: '2', name: 'Cơm gà Hải Nam', price: 50000, originalPrice: 60000, discount: 17, image: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=400', categoryId: '1', sold: 280, rating: 4.7, description: 'Cơm gà Hải Nam với gà luộc mềm', shop: 'Hải Nam Kitchen' },
+  { id: '4', name: 'Phở bò tái nạm', price: 55000, originalPrice: 70000, discount: 21, image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400', categoryId: '2', sold: 450, rating: 4.9, description: 'Phở bò truyền thống Hà Nội', shop: 'Phở Thìn Hà Nội' },
+  { id: '7', name: 'Pizza Margherita', price: 89000, originalPrice: 120000, discount: 26, image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400', categoryId: '3', sold: 210, rating: 4.7, description: 'Pizza Margherita với sốt cà chua', shop: 'Pizza House' },
+  { id: '9', name: 'Classic Beef Burger', price: 65000, originalPrice: 80000, discount: 19, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400', categoryId: '4', sold: 260, rating: 4.6, description: 'Burger bò Úc 100%', shop: 'Burger Bros' },
+  { id: '11', name: 'Trà sữa trân châu đường đen', price: 35000, originalPrice: 45000, discount: 22, image: 'https://images.unsplash.com/photo-1558857563-b371033873b8?w=400', categoryId: '5', sold: 520, rating: 4.9, description: 'Trà sữa đường đen béo ngậy', shop: 'Tiger Sugar' },
+  { id: '13', name: 'Gà rán sốt cay', price: 75000, originalPrice: 95000, discount: 21, image: 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=400', categoryId: '6', sold: 410, rating: 4.8, description: 'Gà rán giòn phủ sốt cay Hàn Quốc', shop: 'Korean Chicken' },
+];
+
 // ==================== SCHEMAS ====================
 
 // User Schema
@@ -78,6 +111,18 @@ export const OrderItemSchema = {
   },
 };
 
+// OTP Schema for storing OTP codes temporarily
+export const OTPSchema = {
+  name: 'OTP',
+  primaryKey: 'key',
+  properties: {
+    key: 'string',
+    otp: 'string',
+    expiry: 'date',
+    createdAt: 'date',
+  },
+};
+
 // Order Schema
 export const OrderSchema = {
   name: 'Order',
@@ -107,11 +152,11 @@ export const initializeRealm = async () => {
     if (realm) return realm;
     
     realm = await Realm.open({
-      schema: [UserSchema, CategorySchema, ProductSchema, CartItemSchema, OrderItemSchema, OrderSchema],
-      schemaVersion: 1,
+      schema: [UserSchema, CategorySchema, ProductSchema, CartItemSchema, OrderItemSchema, OTPSchema, OrderSchema],
+      schemaVersion: 2,
     });
     
-    console.log('Realm initialized successfully');
+    console.log('✅ Realm initialized successfully');
     return realm;
   } catch (error) {
     console.error('Error initializing Realm:', error);
@@ -130,6 +175,25 @@ export const closeRealm = () => {
   if (realm) {
     realm.close();
     realm = null;
+  }
+};
+
+export const resetDatabase = async () => {
+  try {
+    if (realm) {
+      realm.close();
+      realm = null;
+    }
+    // Delete the Realm file
+    await Realm.deleteFile({ path: 'foodapp.realm' });
+    console.log('✅ Realm database reset (deleted all data)');
+    // Reinitialize with fresh data
+    await initializeRealm();
+    await initializeDatabase();
+    console.log('✅ Realm database reinitialized with seed data');
+  } catch (error) {
+    console.error('Error resetting database:', error);
+    throw error;
   }
 };
 
@@ -159,10 +223,24 @@ export const createUser = async (userData) => {
 export const getUserByEmail = async (email) => {
   const realm = await getRealm();
   try {
-    const user = realm.objects('User').filtered(`email = '${email}'`)[0];
+    const users = realm.objects('User').filtered(`email = $0`, email);
+    if (users.length > 0) {
+      return { ...users[0] };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user by email:', error);
+    throw error;
+  }
+};
+
+export const getUserById = async (userId) => {
+  const realm = await getRealm();
+  try {
+    const user = realm.objectForPrimaryKey('User', userId);
     return user ? { ...user } : null;
   } catch (error) {
-    console.error('Error getting user:', error);
+    console.error('Error getting user by id:', error);
     throw error;
   }
 };
@@ -178,6 +256,17 @@ export const updateUser = async (userId, updates) => {
     });
   } catch (error) {
     console.error('Error updating user:', error);
+    throw error;
+  }
+};
+
+export const getAllUsers = async () => {
+  const realm = await getRealm();
+  try {
+    const users = realm.objects('User');
+    return users.map(user => ({ ...user }));
+  } catch (error) {
+    console.error('Error getting all users:', error);
     throw error;
   }
 };
@@ -210,9 +299,114 @@ export const getAllCategories = async () => {
   }
 };
 
+export const seedTestUsers = async (users) => {
+  try {
+    console.log(`📝 Seeding ${users.length} test users...`);
+    
+    for (const user of users) {
+      try {
+        // Check both by ID and email to avoid duplicates
+        const existsById = await getUserById(user.id);
+        const existsByEmail = await getUserByEmail(user.email);
+        
+        if (!existsById && !existsByEmail) {
+          await createUser({
+            id: user.id,
+            email: user.email,
+            password: user.password,
+            fullName: user.fullName,
+            phone: user.phone,
+            avatar: user.avatar,
+          });
+          console.log(`✅ Seeded user: ${user.email} (ID: ${user.id})`);
+        } else {
+          console.log(`⏭️  User already exists: ${user.email}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error seeding user ${user.email}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('Error seeding test users:', error);
+    throw error;
+  }
+};
+
 export const seedCategories = async (categories) => {
   for (const category of categories) {
     await createCategory(category);
+  }
+};
+
+// ===== OTP OPERATIONS =====
+export const storeOTP = async (key, otp) => {
+  const realm = await getRealm();
+  try {
+    realm.write(() => {
+      realm.create('OTP', {
+        key,
+        otp,
+        expiry: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+        createdAt: new Date(),
+      }, 'modified');
+    });
+    console.log(`✅ OTP stored for key: ${key}`);
+  } catch (error) {
+    console.error('Error storing OTP:', error);
+    throw error;
+  }
+};
+
+export const verifyOTP = async (key, otp) => {
+  const realm = await getRealm();
+  try {
+    const otpRecord = realm.objectForPrimaryKey('OTP', key);
+    
+    if (!otpRecord) {
+      console.log(`❌ OTP not found for key: ${key}`);
+      return false;
+    }
+    
+    if (new Date() > otpRecord.expiry) {
+      console.log(`❌ OTP expired for key: ${key}`);
+      realm.write(() => {
+        realm.delete(otpRecord);
+      });
+      return false;
+    }
+    
+    if (otpRecord.otp === otp) {
+      console.log(`✅ OTP verified for key: ${key}`);
+      realm.write(() => {
+        realm.delete(otpRecord);
+      });
+      return true;
+    }
+    
+    console.log(`❌ OTP mismatch for key: ${key}`);
+    return false;
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    throw error;
+  }
+};
+
+export const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+export const deleteCategory = async (categoryId) => {
+  const realm = await getRealm();
+  try {
+    realm.write(() => {
+      const category = realm.objectForPrimaryKey('Category', categoryId);
+      if (category) {
+        realm.delete(category);
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    throw error;
   }
 };
 
@@ -277,6 +471,21 @@ export const getProductById = async (productId) => {
 export const seedProducts = async (products) => {
   for (const product of products) {
     await createProduct(product);
+  }
+};
+
+export const updateProductPrice = async (productId, newPrice) => {
+  const realm = await getRealm();
+  try {
+    realm.write(() => {
+      const product = realm.objectForPrimaryKey('Product', productId);
+      if (product) {
+        product.price = newPrice;
+      }
+    });
+  } catch (error) {
+    console.error('Error updating product price:', error);
+    throw error;
   }
 };
 
@@ -511,13 +720,29 @@ export const initializeDatabase = async () => {
     
     // Check if we need to seed initial data
     const categoryCount = realm.objects('Category').length;
+    const userCount = realm.objects('User').length;
+    
+    // Seed test user ID=1 if it doesn't exist
+    try {
+      const testUser = await getUserById('1');
+      if (!testUser) {
+        console.log('📝 Seeding test user (ID=1)...');
+        await seedTestUsers([SEED_TEST_USER]);
+        console.log('✅ Test user seeded successfully');
+      } else {
+        console.log('✓ Test user (ID=1) already exists');
+      }
+    } catch (error) {
+      console.log('📝 Seeding test user (ID=1)...');
+      await seedTestUsers([SEED_TEST_USER]);
+      console.log('✅ Test user seeded successfully');
+    }
     
     if (categoryCount === 0) {
-      console.log('Seeding initial data...');
-      const mockData = require('../services/mockData');
-      await seedCategories(mockData.mockCategories);
-      await seedProducts(mockData.mockProducts);
-      console.log('Initial data seeded successfully');
+      console.log('📝 Seeding initial data (categories & products)...');
+      await seedCategories(SEED_CATEGORIES);
+      await seedProducts(SEED_PRODUCTS);
+      console.log('✅ Initial data seeded successfully');
     }
     
     return realm;
@@ -535,17 +760,22 @@ export default {
   // User operations
   createUser,
   getUserByEmail,
+  getUserById,
   updateUser,
+  getAllUsers,
+  seedTestUsers,
   // Category operations
   createCategory,
   getAllCategories,
   seedCategories,
+  deleteCategory,
   // Product operations
   createProduct,
   getAllProducts,
   getProductsByCategory,
   getProductById,
   seedProducts,
+  updateProductPrice,
   // Cart operations
   addToCart,
   getAllCartItems,

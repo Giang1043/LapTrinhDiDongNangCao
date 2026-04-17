@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
-import { mockUsers } from '../../services/mockData';
+import realmDB from '../../database/realmDB';
 import useAuthStore from '../../store/authStore';
 
 export default function ChangePasswordScreen({ navigation }) {
@@ -11,24 +11,33 @@ export default function ChangePasswordScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = () => {
+  const handleChange = async () => {
     if (!currentPassword) return Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu hiện tại');
     if (newPassword.length < 6) return Alert.alert('Lỗi', 'Mật khẩu mới phải ít nhất 6 ký tự');
     if (newPassword !== confirmPassword) return Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
 
     setLoading(true);
-    setTimeout(() => {
-      // Mock verify current password
-      const mockUser = mockUsers.find(u => u.email === user?.email);
-      if (mockUser && mockUser.password !== currentPassword) {
+    try {
+      // Get user from Realm and verify current password
+      const realmUser = await realmDB.getUserById(user?.id);
+      if (!realmUser) {
+        setLoading(false);
+        return Alert.alert('Lỗi', 'Không tìm thấy người dùng');
+      }
+      if (realmUser.password !== currentPassword) {
         setLoading(false);
         return Alert.alert('Lỗi', 'Mật khẩu hiện tại không đúng');
       }
-      if (mockUser) mockUser.password = newPassword;
+      
+      // Update password in Realm
+      await realmDB.updateUser(user?.id, { password: newPassword });
       setLoading(false);
       Alert.alert('Thành công', 'Đổi mật khẩu thành công');
       navigation.goBack();
-    }, 500);
+    } catch (error) {
+      setLoading(false);
+      Alert.alert('Lỗi', error.message || 'Có lỗi xảy ra');
+    }
   };
 
   return (
