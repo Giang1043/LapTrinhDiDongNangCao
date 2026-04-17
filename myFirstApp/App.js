@@ -15,19 +15,29 @@ const theme = {
 };
 
 export default function App() {
+  const [isReady, setIsReady] = React.useState(false);
+
   useEffect(() => {
     // Initialize Realm database on app start
     const initDB = async () => {
       try {
         await realmDB.initializeDatabase();
-        console.log('Database initialized successfully');
+        console.log('✅ Database initialized successfully');
+        setIsReady(true);
       } catch (error) {
-        console.error('Failed to initialize database:', error);
+        console.error('❌ Failed to initialize database:', error);
+        // Still set ready even if there's an error
+        setIsReady(true);
       }
     };
     
     initDB();
   }, []);
+
+  // Don't render navigation until database is ready
+  if (!isReady) {
+    return null;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Searchbar, Text, Chip, IconButton } from 'react-native-paper';
+import { View, FlatList, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { Searchbar, Text, Chip, IconButton, Button } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import realmDB from '../../database/realmDB';
 
@@ -12,28 +12,58 @@ export default function SearchScreen({ navigation }) {
   const [showHistory, setShowHistory] = useState(true);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const initializeSearch = async () => {
       try {
-        const realmProducts = await realmDB.getAllProducts();
-        const realmCategories = await realmDB.getAllCategories();
-        setProducts(realmProducts);
-        setCategories(realmCategories);
-        console.log('✅ SearchScreen: Loaded from Realm -', realmProducts.length, 'products');
+        setIsLoading(true);
+        setError(null);
+        
+        // Load history first
+        await loadHistory();
+        
+        // Load products and categories
+        let realmProducts = await realmDB.getAllProducts();
+        let realmCategories = await realmDB.getAllCategories();
+        
+        // If no products, try to initialize database and retry
+        if (!realmProducts || realmProducts.length === 0) {
+          await realmDB.initializeDatabase();
+          
+          // Retry loading
+          realmProducts = await realmDB.getAllProducts();
+          realmCategories = await realmDB.getAllCategories();
+        }
+        
+        // Validate and set data
+        setProducts(Array.isArray(realmProducts) ? realmProducts : []);
+        setCategories(Array.isArray(realmCategories) ? realmCategories : []);
+        
+        if (!realmProducts || realmProducts.length === 0) {
+          setError('Không có sản phẩm nào. Vui lòng thử lại sau.');
+        }
       } catch (error) {
         console.error('❌ Error loading data:', error);
+        setError('Lỗi tải dữ liệu. Vui lòng thử lại.');
+        setProducts([]);
+        setCategories([]);
+      } finally {
+        setIsLoading(false);
       }
     };
     
-    loadHistory();
     initializeSearch();
   }, []);
 
   const loadHistory = async () => {
     try {
       const data = await AsyncStorage.getItem('searchHistory');
-      if (data) setSearchHistory(JSON.parse(data));
+      if (data) {
+        const parsed = JSON.parse(data);
+        setSearchHistory(Array.isArray(parsed) ? parsed : []);
+      }
     } catch (e) {}
   };
 
@@ -47,6 +77,28 @@ export default function SearchScreen({ navigation }) {
   const clearHistory = async () => {
     setSearchHistory([]);
     await AsyncStorage.removeItem('searchHistory');
+  };
+
+  const handleRetry = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      let realmProducts = await realmDB.getAllProducts();
+      let realmCategories = await realmDB.getAllCategories();
+      
+      if (!realmProducts || realmProducts.length === 0) {
+        await realmDB.initializeDatabase();
+        realmProducts = await realmDB.getAllProducts();
+        realmCategories = await realmDB.getAllCategories();
+      }
+      
+      setProducts(Array.isArray(realmProducts) ? realmProducts : []);
+      setCategories(Array.isArray(realmCategories) ? realmCategories : []);
+    } catch (error) {
+      setError('Lỗi tải dữ liệu. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSearch = (text) => {
@@ -90,22 +142,29 @@ export default function SearchScreen({ navigation }) {
     return results;
   }, [query, selectedCategory, sortBy]);
 
-  const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
+  const formatPrice = (price) => {
+    if (typeof price !== 'number' || isNaN(price)) return '0đ';
+    return price.toLocaleString('vi-VN') + 'đ';
+  };
 
   const renderProduct = ({ item }) => (
     <TouchableOpacity
       style={styles.productCard}
       onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+      activeOpacity={0.8}
     >
-      <Image source={{ uri: item.image }} style={styles.productImage} />
+      <Image 
+        source={{ uri: item.image }} 
+        style={styles.productImage}
+      />
       <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-        <Text style={styles.productShop}>{item.shop}</Text>
+        <Text style={styles.productName} numberOfLines={2}>{item.name || 'Không tên'}</Text>
+        <Text style={styles.productShop}>{item.shop || 'Không có shop'}</Text>
         <View style={styles.priceRow}>
           <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
-          {item.discount > 0 && <Text style={styles.discount}>-{item.discount}%</Text>}
+          {item.discount && item.discount > 0 && <Text style={styles.discount}>-{item.discount}%</Text>}
         </View>
-        <Text style={styles.sold}>Đã bán {item.sold} | ⭐ {item.rating}</Text>
+        <Text style={styles.sold}>Đã bán {item.sold || 0} | ⭐ {item.rating || 0}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -118,10 +177,35 @@ export default function SearchScreen({ navigation }) {
         onSubmitEditing={handleSubmit}
         value={query}
         style={styles.searchBar}
+        editable={!isLoading}
       />
 
+      {/* Error message */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button 
+            mode="contained" 
+            onPress={handleRetry}
+            compact
+            buttonColor="#FF6B35"
+            style={{ marginTop: 10 }}
+          >
+            Thử lại
+          </Button>
+        </View>
+      )}
+
+      {/* Loading indicator */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF6B35" />
+          <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+        </View>
+      )}
+
       {/* Search history */}
-      {showHistory && searchHistory.length > 0 && (
+      {!isLoading && showHistory && searchHistory.length > 0 && (
         <View style={styles.historySection}>
           <View style={styles.historyHeader}>
             <Text style={styles.historyTitle}>Lịch sử tìm kiếm</Text>
@@ -138,60 +222,77 @@ export default function SearchScreen({ navigation }) {
       )}
 
       {/* Category filter */}
-      <FlatList
-        data={[{ id: null, name: 'Tất cả' }, ...categories]}
-        renderItem={({ item }) => (
-          <Chip
-            selected={selectedCategory === item.id}
-            onPress={() => setSelectedCategory(item.id)}
-            style={[styles.chip, selectedCategory === item.id && styles.chipSelected]}
-            textStyle={selectedCategory === item.id ? styles.chipTextSelected : styles.chipText}
-          >
-            {item.name}
-          </Chip>
-        )}
-        keyExtractor={(item) => String(item.id)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipList}
-      />
+      {!isLoading && (
+        <View style={styles.filterSection}>
+          <View style={styles.filterHeader}>
+            <Text style={styles.filterTitle}>📂 Danh mục</Text>
+          </View>
+          <FlatList
+            data={[{ id: null, name: 'Tất cả' }, ...categories]}
+            renderItem={({ item }) => (
+              <Chip
+                selected={selectedCategory === item.id}
+                onPress={() => setSelectedCategory(item.id)}
+                style={[styles.chip, selectedCategory === item.id && styles.chipSelected]}
+                textStyle={selectedCategory === item.id ? styles.chipTextSelected : styles.chipText}
+              >
+                {item.name}
+              </Chip>
+            )}
+            keyExtractor={(item) => String(item.id)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryChipList}
+            scrollEnabled={categories.length > 0}
+          />
+        </View>
+      )}
 
       {/* Sort options */}
-      <FlatList
-        data={[
-          { key: null, label: 'Mặc định' },
-          { key: 'popular', label: 'Bán chạy' },
-          { key: 'price_asc', label: 'Giá tăng' },
-          { key: 'price_desc', label: 'Giá giảm' },
-          { key: 'discount', label: 'Giảm giá' },
-        ]}
-        renderItem={({ item }) => (
-          <Chip
-            selected={sortBy === item.key}
-            onPress={() => setSortBy(item.key)}
-            style={[styles.sortChip, sortBy === item.key && styles.sortChipSelected]}
-            textStyle={sortBy === item.key ? styles.chipTextSelected : styles.chipText}
-            icon={sortBy === item.key ? 'check' : undefined}
-          >
-            {item.label}
-          </Chip>
-        )}
-        keyExtractor={item => String(item.key)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipList}
-      />
+      {!isLoading && (
+        <View style={styles.filterSection}>
+          <View style={styles.filterHeader}>
+            <Text style={styles.filterTitle}>🔄 Sắp xếp</Text>
+          </View>
+          <FlatList
+            data={[
+              { key: null, label: 'Mặc định' },
+              { key: 'popular', label: 'Bán chạy' },
+              { key: 'price_asc', label: 'Giá thấp' },
+              { key: 'price_desc', label: 'Giá cao' },
+              { key: 'discount', label: 'Giảm giá' },
+            ]}
+            renderItem={({ item }) => (
+              <Chip
+                selected={sortBy === item.key}
+                onPress={() => setSortBy(item.key)}
+                style={[styles.sortChip, sortBy === item.key && styles.sortChipSelected]}
+                textStyle={sortBy === item.key ? styles.chipTextSelected : styles.chipText}
+                icon={sortBy === item.key ? 'check' : undefined}
+              >
+                {item.label}
+              </Chip>
+            )}
+            keyExtractor={item => String(item.key)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sortChipList}
+          />
+        </View>
+      )}
 
-      <Text style={styles.resultCount}>{filteredProducts.length} kết quả</Text>
+      {!isLoading && <Text style={styles.resultCount}>{filteredProducts.length} kết quả</Text>}
 
       {/* Results */}
-      <FlatList
-        data={filteredProducts}
-        renderItem={renderProduct}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>Không tìm thấy sản phẩm</Text>}
-      />
+      {!isLoading && (
+        <FlatList
+          data={filteredProducts}
+          renderItem={renderProduct}
+          keyExtractor={item => String(item.id)}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={<Text style={styles.empty}>Không tìm thấy sản phẩm</Text>}
+        />
+      )}
     </View>
   );
 }
@@ -199,14 +300,23 @@ export default function SearchScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   searchBar: { margin: 12, elevation: 2, borderRadius: 12, height: 50 },
-  chipList: { paddingHorizontal: 12, paddingBottom: 8 },
-  chip: { marginHorizontal: 4, backgroundColor: '#e8e8e8' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 40 },
+  loadingText: { marginTop: 12, fontSize: 14, color: '#666' },
+  errorContainer: { backgroundColor: '#FFE5E5', paddingVertical: 12, paddingHorizontal: 12, marginHorizontal: 12, marginVertical: 8, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: '#D32F2F' },
+  errorText: { color: '#D32F2F', fontSize: 13, fontWeight: '500' },
+  // Filter sections
+  filterSection: { backgroundColor: '#fff', marginVertical: 8, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  filterHeader: { paddingHorizontal: 16, marginBottom: 10 },
+  filterTitle: { fontSize: 14, fontWeight: '700', color: '#333' },
+  categoryChipList: { paddingHorizontal: 12, paddingBottom: 0 },
+  sortChipList: { paddingHorizontal: 12, paddingBottom: 0 },
+  chip: { marginHorizontal: 5, marginVertical: 4, backgroundColor: '#e8e8e8' },
   chipSelected: { backgroundColor: '#FF6B35' },
-  chipText: { color: '#333', fontSize: 12 },
-  chipTextSelected: { color: '#fff', fontSize: 12 },
-  sortChip: { marginHorizontal: 4, backgroundColor: '#f0f0f0' },
+  chipText: { color: '#333', fontSize: 12, fontWeight: '500' },
+  chipTextSelected: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  sortChip: { marginHorizontal: 5, marginVertical: 4, backgroundColor: '#f0f0f0' },
   sortChipSelected: { backgroundColor: '#333' },
-  resultCount: { fontSize: 13, color: '#999', marginLeft: 16, marginBottom: 8 },
+  resultCount: { fontSize: 13, color: '#999', marginLeft: 16, marginBottom: 8, marginTop: 8 },
   list: { paddingHorizontal: 12 },
   productCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, marginBottom: 10, elevation: 2, overflow: 'hidden' },
   productImage: { width: 100, height: 100 },
