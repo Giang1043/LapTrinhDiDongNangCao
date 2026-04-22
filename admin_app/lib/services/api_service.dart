@@ -14,6 +14,7 @@ class ApiService {
 
   late Dio _dio;
   String? _token;
+  bool _isLoggingOut = false;
 
   Future<void> init() async {
     _dio = Dio(
@@ -44,8 +45,9 @@ class ApiService {
         },
         onError: (error, handler) {
           print('❌ ApiService: Error - ${error.message}');
-          if (error.response?.statusCode == 401) {
-            // Token expired
+          if (error.response?.statusCode == 401 && !_isLoggingOut) {
+            // Token expired - only logout once to prevent infinite loop
+            _isLoggingOut = true;
             logout();
           }
           return handler.next(error);
@@ -87,6 +89,7 @@ class ApiService {
       print('Logout error: $e');
     } finally {
       _token = null;
+      _isLoggingOut = false;
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('auth_token');
     }
